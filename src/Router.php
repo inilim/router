@@ -10,21 +10,21 @@ use \Closure;
  */
 class Router
 {
-   private const METHODS                = 'GET|POST|PUT|DELETE|OPTIONS|PATCH';
+   protected const METHODS                = 'GET|POST|PUT|DELETE|OPTIONS|PATCH';
    /**
     * @var array<string,list<array{pattern:string,handle:string|Closure}>>
     */
-   private array $routes                = [];
+   protected array $routes                = [];
    /**
     * @var array<string,list<array{pattern:string,handle:string|Closure}>>
     */
-   private array $middleware            = [];
-   private ?Closure $not_found_callback = null;
-   private ?string $current_method      = null;
-   private ?string $server_base_path    = null;
-   private ?string $current_uri         = null;
-   private int $count_exec_middleware   = 0;
-   private string $class_controller     = '';
+   protected array $middleware            = [];
+   protected ?Closure $not_found_callback = null;
+   protected ?string $current_method      = null;
+   protected ?string $server_base_path    = null;
+   protected ?string $current_uri         = null;
+   protected int $count_exec_middleware   = 0;
+   protected string $class_controller     = '';
 
 
 
