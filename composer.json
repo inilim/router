@@ -2,7 +2,7 @@
     "name": "inilim/router",
     "description": "router",
     "type": "library",
-    "license": "Free",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "Inilim\\": "src/"
