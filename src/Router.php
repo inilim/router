@@ -1,6 +1,6 @@
 <?php
 
-namespace Inilim;
+namespace Inilim\Router;
 
 use \Closure;
 
