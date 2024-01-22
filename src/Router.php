@@ -55,7 +55,7 @@ class Router
       $methods = $this->prepareMethod($methods);
       if (!str_contains($methods, $this->getRequestMethod())) return $this;
 
-      foreach (explode('|', $methods) as $method) {
+      foreach (\explode('|', $methods) as $method) {
          $this->middleware[$method][] = [
             'pattern' => $this->preparePattern($pattern),
             'handle'  => $handle,
@@ -69,7 +69,7 @@ class Router
       $methods = $this->prepareMethod($methods);
       if (!str_contains($methods, $this->getRequestMethod())) return $this;
 
-      foreach (explode('|', $methods) as $method) {
+      foreach (\explode('|', $methods) as $method) {
          $this->routes[$method][] = [
             'pattern' => $this->preparePattern($pattern),
             'handle'  => $handle,
@@ -125,13 +125,13 @@ class Router
 
    public function getRequestMethod(): string
    {
-      if (is_string($this->current_method)) return $this->current_method;
+      if (\is_string($this->current_method)) return $this->current_method;
       return $this->current_method = $this->defineRequestMethod();
    }
 
    public function getCurrentURI(): string
    {
-      if (is_string($this->current_uri)) return $this->current_uri;
+      if (\is_string($this->current_uri)) return $this->current_uri;
       return $this->current_uri = $this->defineCurrentURI();
    }
 
@@ -161,7 +161,7 @@ class Router
 
    protected function preparePattern(string $pattern): string
    {
-      return '/' . trim($pattern, '/');
+      return '/' . \trim($pattern, '/');
    }
 
    /**
@@ -171,17 +171,17 @@ class Router
    {
       $headers = [];
 
-      if (function_exists('getallheaders')) {
-         $headers = getallheaders();
+      if (\function_exists('getallheaders')) {
+         $headers = \getallheaders();
          if ($headers !== false) return $headers;
       }
 
       foreach ($_SERVER as $name => $value) {
          if (str_starts_with($name, 'HTTP_') || ($name == 'CONTENT_TYPE') || ($name == 'CONTENT_LENGTH')) {
-            $key = str_replace(
+            $key = \str_replace(
                [' ', 'Http'],
                ['-', 'HTTP'],
-               ucwords(strtolower(str_replace('_', ' ', substr($name, 5))))
+               \ucwords(\strtolower(\str_replace('_', ' ', \substr($name, 5))))
             );
             $headers[$key] = $value;
          }
@@ -192,16 +192,16 @@ class Router
 
    protected function defineCurrentURI(): string
    {
-      $uri = substr(rawurldecode($_SERVER['REQUEST_URI'] ?? ''), strlen($this->getBasePath()));
-      $pos = strpos($uri, '?');
-      if (is_int($pos)) $uri = substr($uri, 0, $pos);
-      return '/' . trim($uri, '/');
+      $uri = \substr(\rawurldecode($_SERVER['REQUEST_URI'] ?? ''), \strlen($this->getBasePath()));
+      $pos = \strpos($uri, '?');
+      if (\is_int($pos)) $uri = \substr($uri, 0, $pos);
+      return '/' . \trim($uri, '/');
    }
 
    protected function getBasePath(): string
    {
       if ($this->server_base_path === null) {
-         $this->server_base_path = implode('/', array_slice(explode('/', $_SERVER['SCRIPT_NAME']), 0, -1)) . '/';
+         $this->server_base_path = \implode('/', \array_slice(\explode('/', $_SERVER['SCRIPT_NAME']), 0, -1)) . '/';
       }
       return $this->server_base_path;
    }
@@ -212,7 +212,7 @@ class Router
 
       if ($method == 'POST') {
          $headers = $this->getRequestHeaders();
-         if (isset($headers['X-HTTP-Method-Override']) && in_array($headers['X-HTTP-Method-Override'], ['PUT', 'DELETE', 'PATCH'])) {
+         if (isset($headers['X-HTTP-Method-Override']) && \in_array($headers['X-HTTP-Method-Override'], ['PUT', 'DELETE', 'PATCH'])) {
             $method = $headers['X-HTTP-Method-Override'];
          }
       }
@@ -226,14 +226,14 @@ class Router
     */
    protected function patternMatches(string $pattern, string $uri, ?array &$matches, int $flags): bool
    {
-      $pattern = str_replace(
+      $pattern = \str_replace(
          ['{int_unsigned}',     '{int}'],
          ['(0|[1-9][0-9]{0,})', '(0|\-?[1-9][0-9]{0,})'],
          $pattern
       );
-      $pattern = preg_replace('/\/{(.*?)}/', '/(.*?)', $pattern);
+      $pattern = \preg_replace('/\/{(.*?)}/', '/(.*?)', $pattern);
 
-      return boolval(preg_match_all('#^' . $pattern . '$#', $uri, $matches, $flags));
+      return \boolval(\preg_match_all('#^' . $pattern . '$#', $uri, $matches, $flags));
    }
 
    /**
@@ -250,20 +250,20 @@ class Router
          $is_match = $this->patternMatches($route['pattern'], $uri, $matches, PREG_OFFSET_CAPTURE);
 
          if ($is_match) {
-            $matches = array_slice($matches, 1);
+            $matches = \array_slice($matches, 1);
 
             // ------------------------------------------------------------------
             // EPIC Bramus
             // ------------------------------------------------------------------
-            $params = array_map(function ($match, $index) use ($matches) {
-               if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && is_array($matches[$index + 1][0])) {
+            $params = \array_map(function ($match, $index) use ($matches) {
+               if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && \is_array($matches[$index + 1][0])) {
                   if ($matches[$index + 1][0][1] > -1) {
-                     return trim(substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
+                     return \trim(\substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
                   }
                }
 
-               return isset($match[0][0]) && $match[0][1] != -1 ? trim($match[0][0], '/') : null;
-            }, $matches, array_keys($matches));
+               return isset($match[0][0]) && $match[0][1] != -1 ? \trim($match[0][0], '/') : null;
+            }, $matches, \array_keys($matches));
             // ------------------------------------------------------------------
             // EPIC
             // ------------------------------------------------------------------
@@ -292,9 +292,9 @@ class Router
    {
       // try {
       if ($method === '') {
-         if (method_exists($class, '__construct')) new $class(...$params);
+         if (\method_exists($class, '__construct')) new $class(...$params);
       } else {
-         if (method_exists($class, $method)) (new $class)->{$method}(...$params);
+         if (\method_exists($class, $method)) (new $class)->{$method}(...$params);
       }
       // } catch (\Throwable $e) {
       // }
@@ -314,11 +314,11 @@ class Router
     */
    protected function exec(string|Closure $handle, array $params = []): void
    {
-      if (!is_string($handle)) {
-         call_user_func_array($handle, $params);
+      if (!\is_string($handle)) {
+         \call_user_func_array($handle, $params);
       } elseif (str_contains($handle, '@')) {
          // вызвать метод класса
-         list($class, $method) = explode('@', $handle);
+         list($class, $method) = \explode('@', $handle);
          $this->class_controller = $class;
          $this->execMethod($class, $method, $params);
       }
@@ -326,7 +326,7 @@ class Router
 
    protected function prepareMethod(string $method): string
    {
-      $method = strtoupper($method);
+      $method = \strtoupper($method);
       if (str_contains($method, 'ALL')) return self::METHODS;
       return $method;
    }
