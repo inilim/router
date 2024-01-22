@@ -125,13 +125,13 @@ class Router
 
    public function getRequestMethod(): string
    {
-      if (\is_string($this->current_method)) return $this->current_method;
+      if ($this->current_method !== null) return $this->current_method;
       return $this->current_method = $this->defineRequestMethod();
    }
 
    public function getCurrentURI(): string
    {
-      if (\is_string($this->current_uri)) return $this->current_uri;
+      if ($this->current_uri !== null) return $this->current_uri;
       return $this->current_uri = $this->defineCurrentURI();
    }
 
@@ -177,7 +177,7 @@ class Router
       }
 
       foreach ($_SERVER as $name => $value) {
-         if (str_starts_with($name, 'HTTP_') || ($name == 'CONTENT_TYPE') || ($name == 'CONTENT_LENGTH')) {
+         if (\str_starts_with($name, 'HTTP_') || ($name == 'CONTENT_TYPE') || ($name == 'CONTENT_LENGTH')) {
             $key = \str_replace(
                [' ', 'Http'],
                ['-', 'HTTP'],
