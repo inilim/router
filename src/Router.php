@@ -53,7 +53,7 @@ class Router
    public function middleware(string $methods, string $pattern, string|Closure $handle): self
    {
       $methods = $this->prepareMethod($methods);
-      if (!str_contains($methods, $this->getRequestMethod())) return $this;
+      if (!\str_contains($methods, $this->getRequestMethod())) return $this;
 
       foreach (\explode('|', $methods) as $method) {
          $this->middleware[$method][] = [
@@ -67,7 +67,7 @@ class Router
    public function route(string $methods, string $pattern, string|Closure $handle): self
    {
       $methods = $this->prepareMethod($methods);
-      if (!str_contains($methods, $this->getRequestMethod())) return $this;
+      if (!\str_contains($methods, $this->getRequestMethod())) return $this;
 
       foreach (\explode('|', $methods) as $method) {
          $this->routes[$method][] = [
@@ -316,7 +316,7 @@ class Router
    {
       if (!\is_string($handle)) {
          \call_user_func_array($handle, $params);
-      } elseif (str_contains($handle, '@')) {
+      } elseif (\str_contains($handle, '@')) {
          // вызвать метод класса
          list($class, $method) = \explode('@', $handle);
          $this->class_controller = $class;
@@ -327,7 +327,7 @@ class Router
    protected function prepareMethod(string $method): string
    {
       $method = \strtoupper($method);
-      if (str_contains($method, 'ALL')) return self::METHODS;
+      if (\str_contains($method, 'ALL')) return self::METHODS;
       return $method;
    }
 }
