@@ -155,19 +155,10 @@ class Router
       if ($this->not_found_callback) ($this->not_found_callback)();
    }
 
-   // ------------------------------------------------------------------
-   // protected
-   // ------------------------------------------------------------------
-
-   protected function preparePattern(string $pattern): string
-   {
-      return '/' . \trim($pattern, '/');
-   }
-
    /**
     * @return array<string,string>
     */
-   protected function getRequestHeaders(): array
+   public function getRequestHeaders(): array
    {
       $headers = [];
 
@@ -188,6 +179,15 @@ class Router
       }
 
       return $headers;
+   }
+
+   // ------------------------------------------------------------------
+   // protected
+   // ------------------------------------------------------------------
+
+   protected function preparePattern(string $pattern): string
+   {
+      return '/' . \trim($pattern, '/');
    }
 
    protected function defineCurrentURI(): string
@@ -298,15 +298,6 @@ class Router
       }
       // } catch (\Throwable $e) {
       // }
-   }
-
-   protected function getReflectionMethod(string $class, string $method): ?\ReflectionMethod
-   {
-      try {
-         return new \ReflectionMethod($class, $method);
-      } catch (\ReflectionException) {
-         return null;
-      }
    }
 
    /**
