@@ -17,7 +17,7 @@ abstract class RouteAbstract
         return $this->controller;
     }
 
-    public function getPath(): string|Closure
+    public function getPath(): string
     {
         return $this->path;
     }
@@ -25,7 +25,6 @@ abstract class RouteAbstract
     public function path(string|int|float ...$params): string
     {
         $p = $this->getPath();
-        if (!\is_string($p)) return '';
         if (!$params) return $p;
         $match = [];
         $count = (int)\preg_match_all('#\{[^\{\}]+\}#', $p, $match);
