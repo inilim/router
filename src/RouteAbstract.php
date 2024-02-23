@@ -9,11 +9,11 @@ abstract class RouteAbstract
     /**
      * @var class-string|Closure
      */
-    protected string|Closure $controller;
+    protected string|Closure|null $controller = null;
     /**
      * @var class-string|Closure
      */
-    protected string|Closure $middleware;
+    protected string|Closure|null $middleware = null;
     protected string $path;
 
     public static function make(): static
@@ -21,12 +21,12 @@ abstract class RouteAbstract
         return new static;
     }
 
-    public function getMiddleware(): string|Closure
+    public function getMiddleware(): string|Closure|null
     {
         return $this->middleware;
     }
 
-    public function getController(): string|Closure
+    public function getController(): string|Closure|null
     {
         return $this->controller;
     }
