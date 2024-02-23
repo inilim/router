@@ -288,13 +288,19 @@ class Router
    /**
     * @param array<string|null> $params
     */
-   protected function execMethod(string $class, string $method, array $params): void
+   protected function execMethodClass(string $class, string $method, array $params): void
    {
       // try {
+      if (!\class_exists($class)) return;
       if ($method === '') {
-         if (\method_exists($class, '__construct')) new $class(...$params);
+         $method = '__construct';
+         if (\method_exists($class, $method)) {
+            new $class(...$params);
+         }
       } else {
-         if (\method_exists($class, $method)) (new $class)->{$method}(...$params);
+         if (\method_exists($class, $method)) {
+            (new $class)->{$method}(...$params);
+         }
       }
       // } catch (\Throwable $e) {
       // }
@@ -311,7 +317,10 @@ class Router
          // вызвать метод класса
          list($class, $method) = \explode('@', $handle);
          $this->class_controller = $class;
-         $this->execMethod($class, $method, $params);
+         $this->execMethodClass($class, $method, $params);
+      } else {
+         $this->class_controller = $handle;
+         $this->execMethodClass($handle, '', $params);
       }
    }
 
