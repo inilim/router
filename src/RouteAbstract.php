@@ -10,7 +10,21 @@ abstract class RouteAbstract
      * @var class-string|Closure
      */
     protected string|Closure $controller;
+    /**
+     * @var class-string|Closure
+     */
+    protected string|Closure $middleware;
     protected string $path;
+
+    public static function make(): static
+    {
+        return new static;
+    }
+
+    public function getMiddleware(): string|Closure
+    {
+        return $this->middleware;
+    }
 
     public function getController(): string|Closure
     {
