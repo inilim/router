@@ -14,7 +14,7 @@ class Router
 {
    protected readonly Request $request;
 
-   protected const METHODS                = 'GET|POST|PUT|DELETE|OPTIONS|PATCH';
+   protected const METHODS                = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
    /**
     * @var array<string,list<array{pattern:string,handle:string|Closure}>>
     */
@@ -37,19 +37,20 @@ class Router
       return $this->request;
    }
 
-   public function addRoute(RouteAbstract $route): void
+   public function addRoute(RouteAbstract $route): self
    {
       $method = $route->getMethod();
-      if ($method === null) return;
+      if ($method === null) return $this;
       $path = $route->getPath();
-      if ($path === null) return;
+      if ($path === null) return $this;
       $h = $route->getHandle();
-      if ($h === null) return;
+      if ($h === null) return $this;
       $m = $route->getMiddleware();
       $this->route($method, $path, $h);
       if ($m !== null) {
          $this->middleware($method, $path, $m);
       }
+      return $this;
    }
 
    /**
@@ -115,6 +116,11 @@ class Router
    public function get(string $pattern, string|Closure $handle): self
    {
       return $this->route('GET', $pattern, $handle);
+   }
+
+   public function head(string $pattern, string|Closure $handle): self
+   {
+      return $this->route('HEAD', $pattern, $handle);
    }
 
    public function post(string $pattern, string|Closure $handle): self
@@ -286,7 +292,7 @@ class Router
    protected function exec(string|Closure $handle, array $params = []): void
    {
       if (!\is_string($handle)) {
-         \call_user_func_array($handle, $params);
+         $handle(...$params);
       } elseif (\str_contains($handle, '@')) {
          // вызвать метод класса
          list($handle, $method) = \explode('@', $handle);
