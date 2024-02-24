@@ -3,6 +3,7 @@
 namespace Inilim\Router;
 
 use Inilim\Router\RouteAbstract;
+use Inilim\Request\Request;
 use \Closure;
 
 /**
@@ -11,6 +12,8 @@ use \Closure;
  */
 class Router
 {
+   protected readonly Request $request;
+
    protected const METHODS                = 'GET|POST|PUT|DELETE|OPTIONS|PATCH';
    /**
     * @var array<string,list<array{pattern:string,handle:string|Closure}>>
@@ -21,12 +24,18 @@ class Router
     */
    protected array $middleware            = [];
    protected ?Closure $not_found_callback = null;
-   protected ?string $current_method      = null;
-   protected ?array $headers              = null;
-   protected ?string $server_base_path    = null;
-   protected ?string $current_uri         = null;
    protected int $count_exec_middleware   = 0;
    protected ?string $class_handle        = null;
+
+   public function __construct()
+   {
+      $this->request = new Request;
+   }
+
+   public function getHandleRequest(): Request
+   {
+      return $this->request;
+   }
 
    public function addRoute(RouteAbstract $route): void
    {
@@ -48,7 +57,7 @@ class Router
     */
    public function run(?Closure $callback = null): void
    {
-      $method = $this->getRequestMethod();
+      $method = $this->request->getMethod();
       if (isset($this->middleware[$method])) $this->handle($this->middleware[$method]);
       $this->middleware = [];
 
@@ -68,7 +77,7 @@ class Router
    public function middleware(string $methods, string $pattern, string|Closure $handle): self
    {
       $methods = $this->prepareMethod($methods);
-      if (!\str_contains($methods, $this->getRequestMethod())) return $this;
+      if (!\str_contains($methods, $this->request->getMethod())) return $this;
 
       foreach (\explode('|', $methods) as $method) {
          $this->middleware[$method][] = [
@@ -82,7 +91,7 @@ class Router
    public function route(string $methods, string $pattern, string|Closure $handle): self
    {
       $methods = $this->prepareMethod($methods);
-      if (!\str_contains($methods, $this->getRequestMethod())) return $this;
+      if (!\str_contains($methods, $this->request->getMethod())) return $this;
 
       foreach (\explode('|', $methods) as $method) {
          $this->routes[$method][] = [
@@ -138,16 +147,9 @@ class Router
       return $this->route('OPTIONS', $pattern, $handle);
    }
 
-   public function getRequestMethod(): string
-   {
-      if ($this->current_method !== null) return $this->current_method;
-      return $this->current_method = $this->defineRequestMethod();
-   }
-
    public function getCurrentURI(): string
    {
-      if ($this->current_uri !== null) return $this->current_uri;
-      return $this->current_uri = $this->defineCurrentURI();
+      return $this->request->getURI();
    }
 
    public function getCountExecMiddleware(): int
@@ -175,73 +177,16 @@ class Router
     */
    public function getRequestHeaders(): array
    {
-      if ($this->headers !== null) return $this->headers;
-      return $this->headers = $this->defineRequestHeaders();
+      return $this->request->getHeaders();
    }
 
    // ------------------------------------------------------------------
    // protected
    // ------------------------------------------------------------------
 
-   /**
-    * @return array<string,string>
-    */
-   protected function defineRequestHeaders(): array
-   {
-      $headers = [];
-
-      if (\function_exists('getallheaders')) {
-         $headers = \getallheaders();
-         if ($headers !== false) return $headers;
-      }
-
-      foreach ($_SERVER as $name => $value) {
-         if (\str_starts_with($name, 'HTTP_') || ($name == 'CONTENT_TYPE') || ($name == 'CONTENT_LENGTH')) {
-            $key = \str_replace(
-               [' ', 'Http'],
-               ['-', 'HTTP'],
-               \ucwords(\strtolower(\str_replace('_', ' ', \substr($name, 5))))
-            );
-            $headers[$key] = $value;
-         }
-      }
-
-      return $headers;
-   }
-
    protected function preparePattern(string $pattern): string
    {
       return '/' . \trim($pattern, '/');
-   }
-
-   protected function defineCurrentURI(): string
-   {
-      $uri = \substr(\rawurldecode($_SERVER['REQUEST_URI'] ?? ''), \strlen($this->getBasePath()));
-      $pos = \strpos($uri, '?');
-      if (\is_int($pos)) $uri = \substr($uri, 0, $pos);
-      return '/' . \trim($uri, '/');
-   }
-
-   protected function getBasePath(): string
-   {
-      if ($this->server_base_path === null) {
-         $this->server_base_path = \implode('/', \array_slice(\explode('/', $_SERVER['SCRIPT_NAME']), 0, -1)) . '/';
-      }
-      return $this->server_base_path;
-   }
-
-   protected function defineRequestMethod(): string
-   {
-      $method = $_SERVER['REQUEST_METHOD'] ?? '';
-
-      if ($method == 'POST') {
-         $headers = $this->getRequestHeaders();
-         if (isset($headers['X-HTTP-Method-Override']) && \in_array($headers['X-HTTP-Method-Override'], ['PUT', 'DELETE', 'PATCH'])) {
-            $method = $headers['X-HTTP-Method-Override'];
-         }
-      }
-
-      return $method;
    }
 
    /**

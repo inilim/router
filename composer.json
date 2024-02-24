@@ -15,7 +15,8 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "php": "^8.2"
+        "php": "^8.2",
+        "inilim/request": "dev-main"
     },
     "require-dev": {
         "phpstan/phpstan": "@stable"
