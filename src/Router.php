@@ -26,8 +26,6 @@ class Router
    protected int $count_exec_middleware   = 0;
    protected string $class_controller     = '';
 
-
-
    /**
     * @param ?Closure $callback
     */
