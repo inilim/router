@@ -9,12 +9,13 @@ abstract class RouteAbstract
     /**
      * @var class-string|Closure
      */
-    protected string|Closure|null $controller = null;
+    protected string|Closure|null $handle = null;
     /**
      * @var class-string|Closure
      */
     protected string|Closure|null $middleware = null;
-    protected string $path;
+    protected ?string $method = null;
+    protected ?string $path = null;
 
     public static function make(): static
     {
@@ -26,25 +27,28 @@ abstract class RouteAbstract
         return $this->middleware;
     }
 
-    public function getController(): string|Closure|null
+    public function getHandle(): string|Closure|null
     {
-        return $this->controller;
+        return $this->handle;
     }
 
-    public function getPath(): string
+    public function getPath(): ?string
     {
         return $this->path;
     }
 
+    public function getMethod(): ?string
+    {
+        return $this->method;
+    }
+
     public function path(string|int|float ...$params): string
     {
-        $p = $this->getPath();
+        $p = $this->getPath() ?? '';
         if (!$params) return $p;
         $match = [];
         $count = (int)\preg_match_all('#\{[^\{\}]+\}#', $p, $match);
         if (!$count) return $p;
-        // print_r($match);
-        // exit();
         $match = $match[0];
         /** @var string[] $match */
         $params = \array_slice($params, 0, $count);

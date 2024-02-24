@@ -2,6 +2,7 @@
 
 namespace Inilim\Router;
 
+use Inilim\Router\RouteAbstract;
 use \Closure;
 
 /**
@@ -21,10 +22,26 @@ class Router
    protected array $middleware            = [];
    protected ?Closure $not_found_callback = null;
    protected ?string $current_method      = null;
+   protected ?array $headers              = null;
    protected ?string $server_base_path    = null;
    protected ?string $current_uri         = null;
    protected int $count_exec_middleware   = 0;
-   protected string $class_controller     = '';
+   protected ?string $class_handle        = null;
+
+   public function addRoute(RouteAbstract $route): void
+   {
+      $method = $route->getMethod();
+      if ($method === null) return;
+      $path = $route->getPath();
+      if ($path === null) return;
+      $h = $route->getHandle();
+      if ($h === null) return;
+      $m = $route->getMiddleware();
+      $this->route($method, $path, $h);
+      if ($m !== null) {
+         $this->middleware($method, $path, $m);
+      }
+   }
 
    /**
     * @param ?Closure $callback
@@ -138,9 +155,9 @@ class Router
       return $this->count_exec_middleware;
    }
 
-   public function getClassController(): string
+   public function getClassHandle(): ?string
    {
-      return $this->class_controller;
+      return $this->class_handle;
    }
 
    public function set404(Closure $handle): void
@@ -157,6 +174,19 @@ class Router
     * @return array<string,string>
     */
    public function getRequestHeaders(): array
+   {
+      if ($this->headers !== null) return $this->headers;
+      return $this->headers = $this->defineRequestHeaders();
+   }
+
+   // ------------------------------------------------------------------
+   // protected
+   // ------------------------------------------------------------------
+
+   /**
+    * @return array<string,string>
+    */
+   protected function defineRequestHeaders(): array
    {
       $headers = [];
 
@@ -178,10 +208,6 @@ class Router
 
       return $headers;
    }
-
-   // ------------------------------------------------------------------
-   // protected
-   // ------------------------------------------------------------------
 
    protected function preparePattern(string $pattern): string
    {
@@ -318,11 +344,11 @@ class Router
          \call_user_func_array($handle, $params);
       } elseif (\str_contains($handle, '@')) {
          // вызвать метод класса
-         list($class, $method) = \explode('@', $handle);
-         $this->class_controller = $class;
-         $this->execMethodClass($class, $method, $params);
+         list($handle, $method) = \explode('@', $handle);
+         $this->class_handle = $handle;
+         $this->execMethodClass($handle, $method, $params);
       } else {
-         $this->class_controller = $handle;
+         $this->class_handle = $handle;
          $this->execMethodClass($handle, '', $params);
       }
    }
