@@ -39,9 +39,9 @@ class Router
 
    public function addRoute(RouteAbstract $route): self
    {
-      $method = $route::METHOD;
+      $method = $route->getMethod();
       if ($method === null) return $this;
-      $pattern = $route::PATTERN;
+      $pattern = $route->getPattern();
       if ($pattern === null) return $this;
       $h = $route->getHandle();
       if ($h === null) return $this;
