@@ -45,7 +45,7 @@ abstract class RouteAbstract
         return $this->handle;
     }
 
-    public function path(string|int|float ...$params): string
+    public function route(string|int|float ...$params): string
     {
         $p = self::PATTERN ?? '';
         if (!$params) return $p;

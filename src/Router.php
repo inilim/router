@@ -16,11 +16,11 @@ class Router
 
    protected const METHODS                = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
    /**
-    * @var array<string,list<array{pattern:string,handle:string|Closure}>>
+    * @var array<string,list<array{p:string,h:string|Closure}>>
     */
    protected array $routes                = [];
    /**
-    * @var array<string,list<array{pattern:string,handle:string|Closure}>>
+    * @var array<string,list<array{p:string,h:string|Closure}>>
     */
    protected array $middleware            = [];
    protected ?Closure $not_found_callback = null;
@@ -58,13 +58,12 @@ class Router
     */
    public function run(?Closure $callback = null): void
    {
-      $method = $this->request->getMethod();
-      if (isset($this->middleware[$method])) $this->handle($this->middleware[$method]);
+      if ($this->middleware) $this->handle($this->middleware);
       $this->middleware = [];
 
       $num_handled = 0;
-      if (isset($this->routes[$method])) {
-         $num_handled = $this->handle($this->routes[$method], true);
+      if ($this->routes) {
+         $num_handled = $this->handle($this->routes, true);
       }
       $this->routes = [];
 
@@ -80,12 +79,10 @@ class Router
       $methods = $this->prepareMethod($methods);
       if (!\str_contains($methods, $this->request->getMethod())) return $this;
 
-      foreach (\explode('|', $methods) as $method) {
-         $this->middleware[$method][] = [
-            'pattern' => $this->preparePattern($pattern),
-            'handle'  => $handle,
-         ];
-      }
+      $this->middleware[] = [
+         'p' => $this->preparePattern($pattern),
+         'h' => $handle,
+      ];
       return $this;
    }
 
@@ -94,12 +91,10 @@ class Router
       $methods = $this->prepareMethod($methods);
       if (!\str_contains($methods, $this->request->getMethod())) return $this;
 
-      foreach (\explode('|', $methods) as $method) {
-         $this->routes[$method][] = [
-            'pattern' => $this->preparePattern($pattern),
-            'handle'  => $handle,
-         ];
-      }
+      $this->routes[] = [
+         'p' => $this->preparePattern($pattern),
+         'h' => $handle,
+      ];
       return $this;
    }
 
@@ -202,8 +197,8 @@ class Router
    protected function patternMatches(string $pattern, string $uri, ?array &$matches, int $flags): bool
    {
       $pattern = \str_replace(
-         ['{int_unsigned}',     '{int}'],
-         ['(0|[1-9][0-9]{0,})', '(0|\-?[1-9][0-9]{0,})'],
+         ['{int_unsigned}',     '{int}',                 '{letters}'],
+         ['(0|[1-9][0-9]{0,})', '(0|\-?[1-9][0-9]{0,})', '([a-zA-Z]+)'],
          $pattern
       );
       $pattern = \preg_replace('/\/{(.*?)}/', '/(.*?)', $pattern);
@@ -212,7 +207,7 @@ class Router
    }
 
    /**
-    * @param list<array{pattern:string,handle:string|Closure}> $routes
+    * @param list<array{p:string,h:string|Closure}> $routes
     */
    protected function handle(array &$routes, bool $after_middleware = false): int
    {
@@ -222,7 +217,7 @@ class Router
 
       foreach ($routes as $idx => $route) {
 
-         $is_match = $this->patternMatches($route['pattern'], $uri, $matches, PREG_OFFSET_CAPTURE);
+         $is_match = $this->patternMatches($route['p'], $uri, $matches, PREG_OFFSET_CAPTURE);
 
          if ($is_match) {
             $matches = \array_slice($matches, 1);
@@ -243,7 +238,7 @@ class Router
             // EPIC
             // ------------------------------------------------------------------
 
-            $this->exec($route['handle'], $params);
+            $this->exec($route['h'], $params);
 
             ++$num_handled;
 
