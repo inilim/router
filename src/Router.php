@@ -39,16 +39,16 @@ class Router
 
    public function addRoute(RouteAbstract $route): self
    {
-      $method = $route->getMethod();
+      $method = $route::METHOD;
       if ($method === null) return $this;
-      $path = $route->getPath();
-      if ($path === null) return $this;
+      $pattern = $route::PATTERN;
+      if ($pattern === null) return $this;
       $h = $route->getHandle();
       if ($h === null) return $this;
       $m = $route->getMiddleware();
-      $this->route($method, $path, $h);
+      $this->route($method, $pattern, $h);
       if ($m !== null) {
-         $this->middleware($method, $path, $m);
+         $this->middleware($method, $pattern, $m);
       }
       return $this;
    }

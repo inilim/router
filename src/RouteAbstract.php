@@ -4,6 +4,9 @@ namespace Inilim\Router;
 
 use Closure;
 
+/**
+ * публичные константы дешевле чем защищенные свойства
+ */
 abstract class RouteAbstract
 {
     /**
@@ -14,12 +17,22 @@ abstract class RouteAbstract
      * @var class-string|Closure
      */
     protected string|Closure|null $middleware = null;
-    protected ?string $method = null;
-    protected ?string $path = null;
+    public const METHOD  = null;
+    public const PATTERN = null;
 
     public static function make(): static
     {
         return new static;
+    }
+
+    public function setHandle(string|Closure $handle): void
+    {
+        $this->handle = $handle;
+    }
+
+    public function setMiddleware(string|Closure $middleware): void
+    {
+        $this->middleware = $middleware;
     }
 
     public function getMiddleware(): string|Closure|null
@@ -32,19 +45,9 @@ abstract class RouteAbstract
         return $this->handle;
     }
 
-    public function getPath(): ?string
-    {
-        return $this->path;
-    }
-
-    public function getMethod(): ?string
-    {
-        return $this->method;
-    }
-
     public function path(string|int|float ...$params): string
     {
-        $p = $this->getPath() ?? '';
+        $p = self::PATTERN ?? '';
         if (!$params) return $p;
         $match = [];
         $count = (int)\preg_match_all('#\{[^\{\}]+\}#', $p, $match);
