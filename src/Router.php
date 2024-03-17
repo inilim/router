@@ -45,8 +45,8 @@ class Router
       if ($pattern === null) return $this;
       $h = $route->getHandle();
       if ($h === null) return $this;
-      $m = $route->getMiddleware();
       $this->route($method, $pattern, $h);
+      $m = $route->getMiddleware();
       if ($m !== null) {
          $this->middleware($method, $pattern, $m);
       }
@@ -148,9 +148,9 @@ class Router
       return $this->route('OPTIONS', $pattern, $handle);
    }
 
-   public function getCurrentURI(): string
+   public function getCurrentPath(): string
    {
-      return $this->request->getURI();
+      return $this->request->getPath();
    }
 
    public function getCountExecMiddleware(): int
@@ -213,11 +213,11 @@ class Router
    {
       $num_handled = 0;
 
-      $uri = $this->getCurrentURI();
+      $path = $this->getCurrentPath();
 
       foreach ($routes as $idx => $route) {
 
-         $is_match = $this->patternMatches($route['p'], $uri, $matches, PREG_OFFSET_CAPTURE);
+         $is_match = $this->patternMatches($route['p'], $path, $matches, \PREG_OFFSET_CAPTURE);
 
          if ($is_match) {
             $matches = \array_slice($matches, 1);

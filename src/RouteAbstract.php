@@ -9,11 +9,11 @@ use Closure;
 abstract class RouteAbstract
 {
     /**
-     * @var class-string|Closure|null
+     * @var string|Closure|null
      */
     protected string|Closure|null $handle = null;
     /**
-     * @var class-string|Closure|null
+     * @var string|Closure|null
      */
     protected string|Closure|null $middleware = null;
     protected ?string $method  = null;
