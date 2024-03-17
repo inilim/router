@@ -16,7 +16,7 @@ abstract class RouteAbstract
      * @var string|Closure|null
      */
     protected string|Closure|null $middleware = null;
-    protected ?string $method  = null;
+    protected ?string $request_method  = null;
     protected ?string $pattern = null;
 
     public static function make(): static
@@ -39,9 +39,9 @@ abstract class RouteAbstract
         return $this->pattern;
     }
 
-    public function getMethod(): ?string
+    public function getRequestMethod(): ?string
     {
-        return $this->method;
+        return $this->request_method;
     }
 
     public function getMiddleware(): string|Closure|null
