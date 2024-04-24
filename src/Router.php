@@ -16,20 +16,20 @@ class Router
 
    protected const METHODS                = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
    /**
-    * @var array<string,list<array{p:string,h:string|Closure}>>
+    * @var list<array{p:string,h:string|Closure}>
     */
    protected array $routes                = [];
    /**
-    * @var array<string,list<array{p:string,h:string|Closure}>>
+    * @var list<array{p:string,h:string|Closure}>
     */
    protected array $middleware            = [];
    protected ?Closure $not_found_callback = null;
    protected int $count_exec_middleware   = 0;
    protected ?string $class_handle        = null;
 
-   public function __construct()
+   public function __construct(bool $request_clear_global_vars = false)
    {
-      $this->request = new Request;
+      $this->request = new Request($request_clear_global_vars);
    }
 
    public function getHandleRequest(): Request
@@ -76,8 +76,7 @@ class Router
 
    public function middleware(string $methods, string $pattern, string|Closure $handle): self
    {
-      $methods = $this->prepareMethod($methods);
-      if (!\str_contains($methods, $this->request->getMethod())) return $this;
+      if (!\str_contains($this->prepareMethod($methods), $this->request->getMethod())) return $this;
 
       $this->middleware[] = [
          'p' => $this->preparePattern($pattern),
@@ -88,8 +87,7 @@ class Router
 
    public function route(string $methods, string $pattern, string|Closure $handle): self
    {
-      $methods = $this->prepareMethod($methods);
-      if (!\str_contains($methods, $this->request->getMethod())) return $this;
+      if (!\str_contains($this->prepareMethod($methods), $this->request->getMethod())) return $this;
 
       $this->routes[] = [
          'p' => $this->preparePattern($pattern),
@@ -301,8 +299,8 @@ class Router
 
    protected function prepareMethod(string $method): string
    {
-      $method = \strtoupper($method);
-      if (\str_contains($method, 'ALL')) return self::METHODS;
-      return $method;
+      $m = \strtoupper($method);
+      if (\str_contains($m, 'ALL')) return self::METHODS;
+      return $m;
    }
 }
