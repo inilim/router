@@ -2,6 +2,8 @@
 
 namespace Inilim\Router;
 
+use Inilim\Router\RouteAbstract;
+use Inilim\Request\Request;
 use \Closure;
 
 /**
@@ -10,36 +12,57 @@ use \Closure;
  */
 class Router
 {
-   protected const METHODS                = 'GET|POST|PUT|DELETE|OPTIONS|PATCH';
+   protected readonly Request $request;
+
+   protected const METHODS                = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
    /**
-    * @var array<string,list<array{pattern:string,handle:string|Closure}>>
+    * @var list<array{p:string,h:string|Closure}>
     */
    protected array $routes                = [];
    /**
-    * @var array<string,list<array{pattern:string,handle:string|Closure}>>
+    * @var list<array{p:string,h:string|Closure}>
     */
    protected array $middleware            = [];
    protected ?Closure $not_found_callback = null;
-   protected ?string $current_method      = null;
-   protected ?string $server_base_path    = null;
-   protected ?string $current_uri         = null;
    protected int $count_exec_middleware   = 0;
-   protected string $class_controller     = '';
+   protected ?string $class_handle        = null;
 
+   public function __construct(bool $request_clear_global_vars = false)
+   {
+      $this->request = new Request($request_clear_global_vars);
+   }
 
+   public function getRequest(): Request
+   {
+      return $this->request;
+   }
+
+   public function addRoute(RouteAbstract $route): self
+   {
+      $method  = $route->getRequestMethod();
+      $pattern = $route->getPattern();
+      $this->route(
+         $method,
+         $pattern,
+         $route->getHandle(),
+      );
+      $m = $route->getMiddleware();
+      if ($m === null) return $this;
+      $this->middleware($method, $pattern, $m);
+      return $this;
+   }
 
    /**
     * @param ?Closure $callback
     */
    public function run(?Closure $callback = null): void
    {
-      $method = $this->getRequestMethod();
-      if (isset($this->middleware[$method])) $this->handle($this->middleware[$method]);
+      if ($this->middleware) $this->handle($this->middleware);
       $this->middleware = [];
 
       $num_handled = 0;
-      if (isset($this->routes[$method])) {
-         $num_handled = $this->handle($this->routes[$method], true);
+      if ($this->routes) {
+         $num_handled = $this->handle($this->routes, true);
       }
       $this->routes = [];
 
@@ -52,29 +75,19 @@ class Router
 
    public function middleware(string $methods, string $pattern, string|Closure $handle): self
    {
-      $methods = $this->prepareMethod($methods);
-      if (!\str_contains($methods, $this->getRequestMethod())) return $this;
+      $r = $this->add($methods, $pattern, $handle);
+      if ($r === null) return $this;
 
-      foreach (\explode('|', $methods) as $method) {
-         $this->middleware[$method][] = [
-            'pattern' => $this->preparePattern($pattern),
-            'handle'  => $handle,
-         ];
-      }
+      $this->middleware[] = $r;
       return $this;
    }
 
    public function route(string $methods, string $pattern, string|Closure $handle): self
    {
-      $methods = $this->prepareMethod($methods);
-      if (!\str_contains($methods, $this->getRequestMethod())) return $this;
+      $r = $this->add($methods, $pattern, $handle);
+      if ($r === null) return $this;
 
-      foreach (\explode('|', $methods) as $method) {
-         $this->routes[$method][] = [
-            'pattern' => $this->preparePattern($pattern),
-            'handle'  => $handle,
-         ];
-      }
+      $this->routes[] = $r;
       return $this;
    }
 
@@ -91,6 +104,11 @@ class Router
    public function get(string $pattern, string|Closure $handle): self
    {
       return $this->route('GET', $pattern, $handle);
+   }
+
+   public function head(string $pattern, string|Closure $handle): self
+   {
+      return $this->route('HEAD', $pattern, $handle);
    }
 
    public function post(string $pattern, string|Closure $handle): self
@@ -123,16 +141,9 @@ class Router
       return $this->route('OPTIONS', $pattern, $handle);
    }
 
-   public function getRequestMethod(): string
+   public function getCurrentPath(): string
    {
-      if ($this->current_method !== null) return $this->current_method;
-      return $this->current_method = $this->defineRequestMethod();
-   }
-
-   public function getCurrentURI(): string
-   {
-      if ($this->current_uri !== null) return $this->current_uri;
-      return $this->current_uri = $this->defineCurrentURI();
+      return $this->request->getPath();
    }
 
    public function getCountExecMiddleware(): int
@@ -140,9 +151,9 @@ class Router
       return $this->count_exec_middleware;
    }
 
-   public function getClassController(): string
+   public function getClassHandle(): ?string
    {
-      return $this->class_controller;
+      return $this->class_handle;
    }
 
    public function set404(Closure $handle): void
@@ -160,64 +171,29 @@ class Router
     */
    public function getRequestHeaders(): array
    {
-      $headers = [];
-
-      if (\function_exists('getallheaders')) {
-         $headers = \getallheaders();
-         if ($headers !== false) return $headers;
-      }
-
-      foreach ($_SERVER as $name => $value) {
-         if (\str_starts_with($name, 'HTTP_') || ($name == 'CONTENT_TYPE') || ($name == 'CONTENT_LENGTH')) {
-            $key = \str_replace(
-               [' ', 'Http'],
-               ['-', 'HTTP'],
-               \ucwords(\strtolower(\str_replace('_', ' ', \substr($name, 5))))
-            );
-            $headers[$key] = $value;
-         }
-      }
-
-      return $headers;
+      return $this->request->getHeaders();
    }
 
    // ------------------------------------------------------------------
    // protected
    // ------------------------------------------------------------------
 
+   /**
+    * @return array{p:string,h:string|\Closure}|null
+    */
+   protected function add(string $methods, string $pattern, string|Closure $handle): ?array
+   {
+      if (!\str_contains($this->prepareMethod($methods), $this->request->getMethod())) return null;
+
+      return [
+         'p' => $this->preparePattern($pattern),
+         'h' => $handle,
+      ];
+   }
+
    protected function preparePattern(string $pattern): string
    {
       return '/' . \trim($pattern, '/');
-   }
-
-   protected function defineCurrentURI(): string
-   {
-      $uri = \substr(\rawurldecode($_SERVER['REQUEST_URI'] ?? ''), \strlen($this->getBasePath()));
-      $pos = \strpos($uri, '?');
-      if (\is_int($pos)) $uri = \substr($uri, 0, $pos);
-      return '/' . \trim($uri, '/');
-   }
-
-   protected function getBasePath(): string
-   {
-      if ($this->server_base_path === null) {
-         $this->server_base_path = \implode('/', \array_slice(\explode('/', $_SERVER['SCRIPT_NAME']), 0, -1)) . '/';
-      }
-      return $this->server_base_path;
-   }
-
-   protected function defineRequestMethod(): string
-   {
-      $method = $_SERVER['REQUEST_METHOD'] ?? '';
-
-      if ($method == 'POST') {
-         $headers = $this->getRequestHeaders();
-         if (isset($headers['X-HTTP-Method-Override']) && \in_array($headers['X-HTTP-Method-Override'], ['PUT', 'DELETE', 'PATCH'])) {
-            $method = $headers['X-HTTP-Method-Override'];
-         }
-      }
-
-      return $method;
    }
 
    /**
@@ -227,8 +203,8 @@ class Router
    protected function patternMatches(string $pattern, string $uri, ?array &$matches, int $flags): bool
    {
       $pattern = \str_replace(
-         ['{int_unsigned}',     '{int}'],
-         ['(0|[1-9][0-9]{0,})', '(0|\-?[1-9][0-9]{0,})'],
+         ['{int_unsigned}',     '{int}',                 '{letters}'],
+         ['(0|[1-9][0-9]{0,})', '(0|\-?[1-9][0-9]{0,})', '([a-zA-Z]+)'],
          $pattern
       );
       $pattern = \preg_replace('/\/{(.*?)}/', '/(.*?)', $pattern);
@@ -237,17 +213,17 @@ class Router
    }
 
    /**
-    * @param list<array{pattern:string,handle:string|Closure}> $routes
+    * @param list<array{p:string,h:string|Closure}> $routes
     */
    protected function handle(array &$routes, bool $after_middleware = false): int
    {
       $num_handled = 0;
 
-      $uri = $this->getCurrentURI();
+      $path = $this->getCurrentPath();
 
       foreach ($routes as $idx => $route) {
 
-         $is_match = $this->patternMatches($route['pattern'], $uri, $matches, PREG_OFFSET_CAPTURE);
+         $is_match = $this->patternMatches($route['p'], $path, $matches, \PREG_OFFSET_CAPTURE);
 
          if ($is_match) {
             $matches = \array_slice($matches, 1);
@@ -268,7 +244,7 @@ class Router
             // EPIC
             // ------------------------------------------------------------------
 
-            $this->exec($route['handle'], $params);
+            $this->exec($route['h'], $params);
 
             ++$num_handled;
 
@@ -306,28 +282,33 @@ class Router
       // }
    }
 
+   // protected function isPublicMethod(string $class, string $method): bool
+   // {
+   //    return (new \ReflectionMethod($class, $method))->isPublic();
+   // }
+
    /**
     * @param array<string|null> $params
     */
    protected function exec(string|Closure $handle, array $params = []): void
    {
       if (!\is_string($handle)) {
-         \call_user_func_array($handle, $params);
+         $handle(...$params);
       } elseif (\str_contains($handle, '@')) {
          // вызвать метод класса
-         list($class, $method) = \explode('@', $handle);
-         $this->class_controller = $class;
-         $this->execMethodClass($class, $method, $params);
+         list($handle, $method) = \explode('@', $handle);
+         $this->class_handle = $handle;
+         $this->execMethodClass($handle, $method, $params);
       } else {
-         $this->class_controller = $handle;
+         $this->class_handle = $handle;
          $this->execMethodClass($handle, '', $params);
       }
    }
 
    protected function prepareMethod(string $method): string
    {
-      $method = \strtoupper($method);
-      if (\str_contains($method, 'ALL')) return self::METHODS;
-      return $method;
+      $m = \strtoupper($method);
+      if (\str_contains($m, 'ALL')) return self::METHODS;
+      return $m;
    }
 }
