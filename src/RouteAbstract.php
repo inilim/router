@@ -42,12 +42,14 @@ abstract class RouteAbstract
         $match = [];
         $count = (int)\preg_match_all('#\{[^\{\}]+\}#', $p, $match);
         if (!$count) return $p;
-        // print_r($match);
-        // exit();
         $match = $match[0];
         /** @var string[] $match */
-        $params = \array_slice($params, 0, $count);
-        $params = \array_map(\strval(...), $params);
-        return \str_replace($match, $params, $p);
+
+        foreach (\array_slice($params, 0, $count) as $idx => $param) {
+            $p = \_str()->replaceFirst($match[$idx], \strval($param), $p);
+            unset($match[$idx]);
+        }
+        if ($match) throw new \Exception('"args"');
+        return $p;
     }
 }

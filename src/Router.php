@@ -32,24 +32,23 @@ class Router
       $this->request = new Request($request_clear_global_vars);
    }
 
-   public function getHandleRequest(): Request
+   public function getRequest(): Request
    {
       return $this->request;
    }
 
    public function addRoute(RouteAbstract $route): self
    {
-      $request_method = $route->getRequestMethod();
-      if ($request_method === null) return $this;
+      $method  = $route->getRequestMethod();
       $pattern = $route->getPattern();
-      if ($pattern === null) return $this;
-      $h = $route->getHandle();
-      if ($h === null) return $this;
-      $this->route($request_method, $pattern, $h);
+      $this->route(
+         $method,
+         $pattern,
+         $route->getHandle(),
+      );
       $m = $route->getMiddleware();
-      if ($m !== null) {
-         $this->middleware($request_method, $pattern, $m);
-      }
+      if ($m === null) return $this;
+      $this->middleware($method, $pattern, $m);
       return $this;
    }
 
@@ -76,23 +75,19 @@ class Router
 
    public function middleware(string $methods, string $pattern, string|Closure $handle): self
    {
-      if (!\str_contains($this->prepareMethod($methods), $this->request->getMethod())) return $this;
+      $r = $this->add($methods, $pattern, $handle);
+      if ($r === null) return $this;
 
-      $this->middleware[] = [
-         'p' => $this->preparePattern($pattern),
-         'h' => $handle,
-      ];
+      $this->middleware[] = $r;
       return $this;
    }
 
    public function route(string $methods, string $pattern, string|Closure $handle): self
    {
-      if (!\str_contains($this->prepareMethod($methods), $this->request->getMethod())) return $this;
+      $r = $this->add($methods, $pattern, $handle);
+      if ($r === null) return $this;
 
-      $this->routes[] = [
-         'p' => $this->preparePattern($pattern),
-         'h' => $handle,
-      ];
+      $this->routes[] = $r;
       return $this;
    }
 
@@ -182,6 +177,19 @@ class Router
    // ------------------------------------------------------------------
    // protected
    // ------------------------------------------------------------------
+
+   /**
+    * @return array{p:string,h:string|\Closure}|null
+    */
+   protected function add(string $methods, string $pattern, string|Closure $handle): ?array
+   {
+      if (!\str_contains($this->prepareMethod($methods), $this->request->getMethod())) return null;
+
+      return [
+         'p' => $this->preparePattern($pattern),
+         'h' => $handle,
+      ];
+   }
 
    protected function preparePattern(string $pattern): string
    {
