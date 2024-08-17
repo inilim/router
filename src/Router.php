@@ -27,19 +27,19 @@ class Router
    protected int $count_exec_middleware   = 0;
    protected ?string $class_handle        = null;
 
-   public function __construct(bool $request_clear_global_vars = false)
+   function __construct(bool $request_clear_global_vars = false)
    {
       $this->request = new Request($request_clear_global_vars);
    }
 
-   public function getRequest(): Request
+   function getRequest(): Request
    {
       return $this->request;
    }
 
-   public function addRoute(RouteAbstract $route): self
+   function addRoute(RouteAbstract $route): self
    {
-      $method  = $route->getRequestMethod();
+      $method  = $route->getMethod();
       $pattern = $route->getPattern();
       $this->route(
          $method,
@@ -55,7 +55,7 @@ class Router
    /**
     * @param ?Closure $callback
     */
-   public function run(?Closure $callback = null): void
+   function run(?Closure $callback = null): void
    {
       if ($this->middleware) $this->handle($this->middleware);
       $this->middleware = [];
@@ -73,7 +73,7 @@ class Router
       }
    }
 
-   public function middleware(string $methods, string $pattern, string|Closure $handle): self
+   function middleware(string $methods, string $pattern, string|Closure $handle): self
    {
       $r = $this->add($methods, $pattern, $handle);
       if ($r === null) return $this;
@@ -82,7 +82,7 @@ class Router
       return $this;
    }
 
-   public function route(string $methods, string $pattern, string|Closure $handle): self
+   function route(string $methods, string $pattern, string|Closure $handle): self
    {
       $r = $this->add($methods, $pattern, $handle);
       if ($r === null) return $this;
@@ -91,77 +91,77 @@ class Router
       return $this;
    }
 
-   public function all(string $pattern, string|Closure $handle): self
+   function all(string $pattern, string|Closure $handle): self
    {
       return $this->route(self::METHODS, $pattern, $handle);
    }
 
-   public function any(string $pattern, string|Closure $handle): self
+   function any(string $pattern, string|Closure $handle): self
    {
       return $this->route(self::METHODS, $pattern, $handle);
    }
 
-   public function get(string $pattern, string|Closure $handle): self
+   function get(string $pattern, string|Closure $handle): self
    {
       return $this->route('GET', $pattern, $handle);
    }
 
-   public function head(string $pattern, string|Closure $handle): self
+   function head(string $pattern, string|Closure $handle): self
    {
       return $this->route('HEAD', $pattern, $handle);
    }
 
-   public function post(string $pattern, string|Closure $handle): self
+   function post(string $pattern, string|Closure $handle): self
    {
       return $this->route('POST', $pattern, $handle);
    }
 
-   public function patch(string $pattern, string|Closure $handle): self
+   function patch(string $pattern, string|Closure $handle): self
    {
       return $this->route('PATCH', $pattern, $handle);
    }
 
-   public function delete(string $pattern, string|Closure $handle): self
+   function delete(string $pattern, string|Closure $handle): self
    {
       return $this->route('DELETE', $pattern, $handle);
    }
 
-   public function destroy(string $pattern, string|Closure $handle): self
+   function destroy(string $pattern, string|Closure $handle): self
    {
       return $this->route('DELETE', $pattern, $handle);
    }
 
-   public function put(string $pattern, string|Closure $handle): self
+   function put(string $pattern, string|Closure $handle): self
    {
       return $this->route('PUT', $pattern, $handle);
    }
 
-   public function options(string $pattern, string|Closure $handle): self
+   function options(string $pattern, string|Closure $handle): self
    {
       return $this->route('OPTIONS', $pattern, $handle);
    }
 
-   public function getCurrentPath(): string
+   function getCurrentPath(): string
    {
       return $this->request->getPath();
    }
 
-   public function getCountExecMiddleware(): int
+   function getCountExecMiddleware(): int
    {
       return $this->count_exec_middleware;
    }
 
-   public function getClassHandle(): ?string
+   function getClassHandle(): ?string
    {
       return $this->class_handle;
    }
 
-   public function set404(Closure $handle): void
+   function set404(Closure $handle): void
    {
       $this->not_found_callback = $handle;
    }
 
-   public function trigger404(): void
+   function trigger404(): void
    {
       if ($this->not_found_callback) ($this->not_found_callback)();
    }
@@ -169,7 +169,7 @@ class Router
    /**
     * @return array<string,string>
     */
-   public function getRequestHeaders(): array
+   function getRequestHeaders(): array
    {
       return $this->request->getHeaders();
    }
@@ -183,7 +183,9 @@ class Router
     */
    protected function add(string $methods, string $pattern, string|Closure $handle): ?array
    {
-      if (!\str_contains($this->prepareMethod($methods), $this->request->getMethod())) return null;
+      if (!\str_contains($this->prepareMethod($methods), $this->request->getMethod())) {
+         return null;
+      }
 
       return [
          'p' => $this->preparePattern($pattern),
@@ -231,7 +233,7 @@ class Router
             // ------------------------------------------------------------------
             // EPIC Bramus
             // ------------------------------------------------------------------
-            $params = \array_map(function ($match, $index) use ($matches) {
+            $params = \array_map(static function ($match, $index) use ($matches) {
                if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && \is_array($matches[$index + 1][0])) {
                   if ($matches[$index + 1][0][1] > -1) {
                      return \trim(\substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
