@@ -12,7 +12,7 @@ use \Closure;
  */
 class Router
 {
-   protected readonly Request $request;
+   public readonly Request $request;
 
    protected const METHODS                = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
    /**
@@ -27,14 +27,9 @@ class Router
    protected int $count_exec_middleware   = 0;
    protected ?string $class_handle        = null;
 
-   function __construct(bool $request_clear_global_vars = false)
+   function __construct(Request $request)
    {
-      $this->request = new Request($request_clear_global_vars);
-   }
-
-   function getRequest(): Request
-   {
-      return $this->request;
+      $this->request = $request;
    }
 
    function addRoute(RouteAbstract $route): self
@@ -52,9 +47,6 @@ class Router
       return $this;
    }
 
-   /**
-    * @param ?Closure $callback
-    */
    function run(?Closure $callback = null): void
    {
       if ($this->middleware) $this->handle($this->middleware);
@@ -128,7 +120,7 @@ class Router
 
    function destroy(string $pattern, string|Closure $handle): self
    {
-      return $this->route('DELETE', $pattern, $handle);
+      return $this->delete($pattern, $handle);
    }
 
    function put(string $pattern, string|Closure $handle): self
@@ -139,11 +131,6 @@ class Router
    function options(string $pattern, string|Closure $handle): self
    {
       return $this->route('OPTIONS', $pattern, $handle);
-   }
-
-   function getCurrentPath(): string
-   {
-      return $this->request->getPath();
    }
 
    function getCountExecMiddleware(): int
@@ -164,14 +151,6 @@ class Router
    function trigger404(): void
    {
       if ($this->not_found_callback) ($this->not_found_callback)();
-   }
-
-   /**
-    * @return array<string,string>
-    */
-   function getRequestHeaders(): array
-   {
-      return $this->request->getHeaders();
    }
 
    // ------------------------------------------------------------------
@@ -221,7 +200,7 @@ class Router
    {
       $num_handled = 0;
 
-      $path = $this->getCurrentPath();
+      $path = $this->request->getPath();
 
       foreach ($routes as $idx => $route) {
 
