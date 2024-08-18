@@ -74,12 +74,18 @@ class Router
       return $this;
    }
 
-   function route(string $methods, string $pattern, string|Closure $handle): self
+   function route(string $methods, string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
    {
       $r = $this->add($methods, $pattern, $handle);
       if ($r === null) return $this;
 
       $this->routes[] = $r;
+
+      if ($middlewares) {
+         foreach ($middlewares as $m) {
+            $this->middleware($methods, $pattern, $m);
+         }
+      }
       return $this;
    }
 
