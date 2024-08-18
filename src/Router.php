@@ -67,7 +67,7 @@ class Router
 
    function middleware(string $methods, string $pattern, string|Closure $handle): self
    {
-      $r = $this->add($methods, $pattern, $handle);
+      $r = $this->save($methods, $pattern, $handle);
       if ($r === null) return $this;
 
       $this->middleware[] = $r;
@@ -76,7 +76,7 @@ class Router
 
    function route(string $methods, string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
    {
-      $r = $this->add($methods, $pattern, $handle);
+      $r = $this->save($methods, $pattern, $handle);
       if ($r === null) return $this;
 
       $this->routes[] = $r;
@@ -89,54 +89,49 @@ class Router
       return $this;
    }
 
-   function all(string $pattern, string|Closure $handle): self
+   function all(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
    {
-      return $this->route(self::METHODS, $pattern, $handle);
+      return $this->route(self::METHODS, $pattern, $handle, ...$middlewares);
    }
 
-   function any(string $pattern, string|Closure $handle): self
+   function any(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
    {
-      return $this->route(self::METHODS, $pattern, $handle);
+      return $this->route(self::METHODS, $pattern, $handle, ...$middlewares);
    }
 
-   function get(string $pattern, string|Closure $handle): self
+   function get(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
    {
-      return $this->route('GET', $pattern, $handle);
+      return $this->route('GET', $pattern, $handle, ...$middlewares);
    }
 
-   function head(string $pattern, string|Closure $handle): self
+   function head(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
    {
-      return $this->route('HEAD', $pattern, $handle);
+      return $this->route('HEAD', $pattern, $handle, ...$middlewares);
    }
 
-   function post(string $pattern, string|Closure $handle): self
+   function post(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
    {
-      return $this->route('POST', $pattern, $handle);
+      return $this->route('POST', $pattern, $handle, ...$middlewares);
    }
 
-   function patch(string $pattern, string|Closure $handle): self
+   function delete(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
    {
-      return $this->route('PATCH', $pattern, $handle);
+      return $this->route('DELETE', $pattern, $handle, ...$middlewares);
    }
 
-   function delete(string $pattern, string|Closure $handle): self
+   function put(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
    {
-      return $this->route('DELETE', $pattern, $handle);
+      return $this->route('PUT', $pattern, $handle, ...$middlewares);
    }
 
-   function destroy(string $pattern, string|Closure $handle): self
+   function patch(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
    {
-      return $this->delete($pattern, $handle);
+      return $this->route('PATCH', $pattern, $handle, ...$middlewares);
    }
 
-   function put(string $pattern, string|Closure $handle): self
+   function options(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
    {
-      return $this->route('PUT', $pattern, $handle);
-   }
-
-   function options(string $pattern, string|Closure $handle): self
-   {
-      return $this->route('OPTIONS', $pattern, $handle);
+      return $this->route('OPTIONS', $pattern, $handle, ...$middlewares);
    }
 
    function getCountExecMiddleware(): int
@@ -166,7 +161,7 @@ class Router
    /**
     * @return array{p:string,h:string|\Closure}|null
     */
-   protected function add(string $methods, string $pattern, string|Closure $handle): ?array
+   protected function save(string $methods, string $pattern, string|Closure $handle): ?array
    {
       if (!\str_contains($this->prepareMethod($methods), $this->request->getMethod())) {
          return null;
