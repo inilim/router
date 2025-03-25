@@ -22,13 +22,13 @@ final class Router
     /**
      * @var list<array{p:string,h:string|\Closure}>
      */
-    protected array $routes                = [];
+    protected array $routes               = [];
     /**
      * @var list<array{p:string,h:string|\Closure}>
      */
-    protected array $middleware            = [];
+    protected array $middleware           = [];
     protected ?\Closure $notFoundCallback = null;
-    protected int $countExecMiddleware   = 0;
+    protected int $countExecMiddleware    = 0;
     protected ?string $classHandle        = null;
 
     function __construct(Request $request)
@@ -102,7 +102,7 @@ final class Router
         $this->routes[] = $r;
 
         if ($middlewares) {
-            foreach ($middlewares as $m) {
+            foreach ($middlewares as &$m) {
                 $this->middleware($methods, $pattern, $m);
             }
         }
@@ -156,10 +156,12 @@ final class Router
     // ------------------------------------------------------------------
 
     /**
+     * @param string $methods
+     * @param string $pattern
      * @param string|\Closure $handle
      * @return array{p:string,h:string|\Closure}|null
      */
-    protected function save(string $methods, string $pattern, $handle)
+    protected function save($methods, $pattern, $handle)
     {
         if (!Str::_contains($this->prepareMethod($methods), $this->request->getMethod())) {
             return null;
@@ -172,18 +174,21 @@ final class Router
     }
 
     /**
+     * @param string $pattern
      * @return string
      */
-    protected function preparePattern(string $pattern)
+    protected function preparePattern($pattern)
     {
         return '/' . \trim($pattern, '/');
     }
 
     /**
+     * @param string $pattern
+     * @param string $uri
      * @param array<mixed> $matches
      * @return bool -> is match yes/no
      */
-    protected function patternMatches(string $pattern, string $uri, ?array &$matches, int $flags)
+    protected function patternMatches($pattern, $uri, ?array &$matches, int $flags)
     {
         $pattern = \str_replace(
             ['{int_unsigned}',     '{int}',                 '{letters}'],
@@ -196,20 +201,20 @@ final class Router
     }
 
     /**
-     * @param list<array{p:string,h:string|\Closure}> $routes
+     * @param list<array{p:string,h:string|\Closure}> $routesOrMiddlewares
      * @return int
      */
-    protected function handle(array &$routes, bool $afterMiddleware = false)
+    protected function handle(array &$routesOrMiddlewares, bool $afterMiddleware = false)
     {
         $numHandled = 0;
 
         $path = $this->request->getPath();
 
-        foreach ($routes as $idx => &$route) {
+        foreach ($routesOrMiddlewares as $idx => &$rOrM) {
 
-            $is_match = $this->patternMatches($route['p'], $path, $matches, \PREG_OFFSET_CAPTURE);
+            $isMatch = $this->patternMatches($rOrM['p'], $path, $matches, \PREG_OFFSET_CAPTURE);
 
-            if ($is_match) {
+            if ($isMatch) {
                 $matches = \array_slice($matches, 1);
 
                 // ------------------------------------------------------------------
@@ -228,7 +233,7 @@ final class Router
                 // EPIC
                 // ------------------------------------------------------------------
 
-                $this->exec($route['h'], $params);
+                $this->exec($rOrM['h'], $params);
 
                 ++$numHandled;
 
@@ -236,7 +241,7 @@ final class Router
                 if ($afterMiddleware) break;
             }
 
-            unset($routes[$idx]);
+            unset($routesOrMiddlewares[$idx]);
         }
 
         // записываем сколько было middleware
@@ -253,10 +258,7 @@ final class Router
     {
         if (!\class_exists($class)) return;
         if ($method === '') {
-            $method = '__construct';
-            if (\method_exists($class, $method)) {
-                new $class(...$params);
-            }
+            new $class(...$params);
         } else {
             if (\method_exists($class, $method)) {
                 (new $class)->{$method}(...$params);
