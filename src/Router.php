@@ -2,295 +2,295 @@
 
 namespace Inilim\Router;
 
-use Inilim\Router\RouteAbstract;
+use Inilim\Tool\Str;
 use Inilim\Request\Request;
-use \Closure;
+use Inilim\Router\RouteAbstract;
 
 /**
- * @author      Bram(us) Van Damme <bramus@bram.us>
- * @author      inilim
+ * @author Bram(us) Van Damme <bramus@bram.us>
+ * @author inilim
  */
-class Router
+final class Router
 {
-   public readonly Request $request;
+    /**
+     * @var Request
+     */
+    protected $request;
 
-   protected const METHODS                = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
-   /**
-    * @var list<array{p:string,h:string|Closure}>
-    */
-   protected array $routes                = [];
-   /**
-    * @var list<array{p:string,h:string|Closure}>
-    */
-   protected array $middleware            = [];
-   protected ?Closure $not_found_callback = null;
-   protected int $count_exec_middleware   = 0;
-   protected ?string $class_handle        = null;
+    protected const METHODS = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
 
-   function __construct(Request $request)
-   {
-      $this->request = $request;
-   }
+    /**
+     * @var list<array{p:string,h:string|\Closure}>
+     */
+    protected array $routes                = [];
+    /**
+     * @var list<array{p:string,h:string|\Closure}>
+     */
+    protected array $middleware            = [];
+    protected ?\Closure $notFoundCallback = null;
+    protected int $countExecMiddleware   = 0;
+    protected ?string $classHandle        = null;
 
-   function addRoute(RouteAbstract $route): self
-   {
-      $method  = $route->getMethod();
-      $pattern = $route->getPattern();
-      $this->route(
-         $method,
-         $pattern,
-         $route->getHandle(),
-      );
-      $m = $route->getMiddleware();
-      if ($m === null) return $this;
-      $this->middleware($method, $pattern, $m);
-      return $this;
-   }
+    function __construct(Request $request)
+    {
+        $this->request = $request;
+    }
 
-   function run(?Closure $callback = null): void
-   {
-      if ($this->middleware) $this->handle($this->middleware);
-      $this->middleware = [];
+    /**
+     * @param RouteAbstract $route
+     * @return self
+     */
+    function addRoute(RouteAbstract $route)
+    {
+        $method  = $route->getMethod();
+        $pattern = $route->getPattern();
+        $this->route(
+            $method,
+            $pattern,
+            $route->getHandle(),
+        );
+        $m = $route->getMiddleware();
+        if ($m === null) return $this;
+        $this->middleware($method, $pattern, $m);
+        return $this;
+    }
 
-      $num_handled = 0;
-      if ($this->routes) {
-         $num_handled = $this->handle($this->routes, true);
-      }
-      $this->routes = [];
+    /**
+     * @return void
+     */
+    function run(?\Closure $callback = null)
+    {
+        if ($this->middleware) $this->handle($this->middleware);
+        $this->middleware = [];
 
-      if ($num_handled === 0) {
-         $this->trigger404();
-      } else {
-         if ($callback) $callback();
-      }
-   }
+        $numHandled = 0;
+        if ($this->routes) {
+            $numHandled = $this->handle($this->routes, true);
+        }
+        $this->routes = [];
 
-   function middleware(string $methods, string $pattern, string|Closure $handle): self
-   {
-      $r = $this->save($methods, $pattern, $handle);
-      if ($r === null) return $this;
+        if ($numHandled === 0) {
+            $this->trigger404();
+        } else {
+            if ($callback) $callback();
+        }
+    }
 
-      $this->middleware[] = $r;
-      return $this;
-   }
+    /**
+     * @param string|\Closure $handle
+     * @return self
+     */
+    function middleware(string $methods, string $pattern, $handle)
+    {
+        $r = $this->save($methods, $pattern, $handle);
+        if ($r === null) return $this;
 
-   function route(string $methods, string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
-   {
-      $r = $this->save($methods, $pattern, $handle);
-      if ($r === null) return $this;
+        $this->middleware[] = $r;
+        return $this;
+    }
 
-      $this->routes[] = $r;
+    /**
+     * @param string|\Closure $handle
+     * @param string|\Closure ...$middlewares
+     * @return self
+     */
+    function route(string $methods, string $pattern, $handle, ...$middlewares)
+    {
+        $r = $this->save($methods, $pattern, $handle);
+        if ($r === null) return $this;
 
-      if ($middlewares) {
-         foreach ($middlewares as $m) {
-            $this->middleware($methods, $pattern, $m);
-         }
-      }
-      return $this;
-   }
+        $this->routes[] = $r;
 
-   function all(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
-   {
-      return $this->route(self::METHODS, $pattern, $handle, ...$middlewares);
-   }
+        if ($middlewares) {
+            foreach ($middlewares as $m) {
+                $this->middleware($methods, $pattern, $m);
+            }
+        }
+        return $this;
+    }
 
-   function any(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
-   {
-      return $this->route(self::METHODS, $pattern, $handle, ...$middlewares);
-   }
+    /**
+     * @param string|\Closure $handle
+     * @param string|\Closure ...$middlewares
+     * @return self
+     */
+    function any(string $pattern, $handle, ...$middlewares)
+    {
+        return $this->route(self::METHODS, $pattern, $handle, ...$middlewares);
+    }
 
-   function get(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
-   {
-      return $this->route('GET', $pattern, $handle, ...$middlewares);
-   }
+    /**
+     * @return int
+     */
+    function getCountExecMiddleware()
+    {
+        return $this->countExecMiddleware;
+    }
 
-   function head(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
-   {
-      return $this->route('HEAD', $pattern, $handle, ...$middlewares);
-   }
+    /**
+     * @return string|null
+     */
+    function getClassHandle()
+    {
+        return $this->classHandle;
+    }
 
-   function post(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
-   {
-      return $this->route('POST', $pattern, $handle, ...$middlewares);
-   }
+    /**
+     * @return void
+     */
+    function set404(\Closure $handle)
+    {
+        $this->notFoundCallback = $handle;
+    }
 
-   function delete(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
-   {
-      return $this->route('DELETE', $pattern, $handle, ...$middlewares);
-   }
+    /**
+     * @return void
+     */
+    function trigger404()
+    {
+        if ($this->notFoundCallback) ($this->notFoundCallback)();
+    }
 
-   function put(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
-   {
-      return $this->route('PUT', $pattern, $handle, ...$middlewares);
-   }
+    // ------------------------------------------------------------------
+    // protected
+    // ------------------------------------------------------------------
 
-   function patch(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
-   {
-      return $this->route('PATCH', $pattern, $handle, ...$middlewares);
-   }
+    /**
+     * @param string|\Closure $handle
+     * @return array{p:string,h:string|\Closure}|null
+     */
+    protected function save(string $methods, string $pattern, $handle)
+    {
+        if (!Str::_contains($this->prepareMethod($methods), $this->request->getMethod())) {
+            return null;
+        }
 
-   function options(string $pattern, string|Closure $handle, string|Closure ...$middlewares): self
-   {
-      return $this->route('OPTIONS', $pattern, $handle, ...$middlewares);
-   }
+        return [
+            'p' => $this->preparePattern($pattern),
+            'h' => $handle,
+        ];
+    }
 
-   function getCountExecMiddleware(): int
-   {
-      return $this->count_exec_middleware;
-   }
+    /**
+     * @return string
+     */
+    protected function preparePattern(string $pattern)
+    {
+        return '/' . \trim($pattern, '/');
+    }
 
-   function getClassHandle(): ?string
-   {
-      return $this->class_handle;
-   }
+    /**
+     * @param array<mixed> $matches
+     * @return bool -> is match yes/no
+     */
+    protected function patternMatches(string $pattern, string $uri, ?array &$matches, int $flags)
+    {
+        $pattern = \str_replace(
+            ['{int_unsigned}',     '{int}',                 '{letters}'],
+            ['(0|[1-9][0-9]{0,})', '(0|\-?[1-9][0-9]{0,})', '([a-zA-Z]+)'],
+            $pattern
+        );
+        $pattern = \preg_replace('/\/{(.*?)}/', '/(.*?)', $pattern);
 
-   function set404(Closure $handle): void
-   {
-      $this->not_found_callback = $handle;
-   }
+        return (bool) \preg_match_all('#^' . $pattern . '$#', $uri, $matches, $flags);
+    }
 
-   function trigger404(): void
-   {
-      if ($this->not_found_callback) ($this->not_found_callback)();
-   }
+    /**
+     * @param list<array{p:string,h:string|\Closure}> $routes
+     * @return int
+     */
+    protected function handle(array &$routes, bool $afterMiddleware = false)
+    {
+        $numHandled = 0;
 
-   // ------------------------------------------------------------------
-   // protected
-   // ------------------------------------------------------------------
+        $path = $this->request->getPath();
 
-   /**
-    * @return array{p:string,h:string|\Closure}|null
-    */
-   protected function save(string $methods, string $pattern, string|Closure $handle): ?array
-   {
-      if (!\str_contains($this->prepareMethod($methods), $this->request->getMethod())) {
-         return null;
-      }
+        foreach ($routes as $idx => &$route) {
 
-      return [
-         'p' => $this->preparePattern($pattern),
-         'h' => $handle,
-      ];
-   }
+            $is_match = $this->patternMatches($route['p'], $path, $matches, \PREG_OFFSET_CAPTURE);
 
-   protected function preparePattern(string $pattern): string
-   {
-      return '/' . \trim($pattern, '/');
-   }
+            if ($is_match) {
+                $matches = \array_slice($matches, 1);
 
-   /**
-    * @param array<mixed> $matches
-    * @return bool -> is match yes/no
-    */
-   protected function patternMatches(string $pattern, string $uri, ?array &$matches, int $flags): bool
-   {
-      $pattern = \str_replace(
-         ['{int_unsigned}',     '{int}',                 '{letters}'],
-         ['(0|[1-9][0-9]{0,})', '(0|\-?[1-9][0-9]{0,})', '([a-zA-Z]+)'],
-         $pattern
-      );
-      $pattern = \preg_replace('/\/{(.*?)}/', '/(.*?)', $pattern);
+                // ------------------------------------------------------------------
+                // EPIC Bramus
+                // ------------------------------------------------------------------
+                $params = \array_map(static function ($match, $index) use ($matches) {
+                    if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && \is_array($matches[$index + 1][0])) {
+                        if ($matches[$index + 1][0][1] > -1) {
+                            return \trim(\substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
+                        }
+                    }
 
-      return \boolval(\preg_match_all('#^' . $pattern . '$#', $uri, $matches, $flags));
-   }
+                    return isset($match[0][0]) && $match[0][1] != -1 ? \trim($match[0][0], '/') : null;
+                }, $matches, \array_keys($matches));
+                // ------------------------------------------------------------------
+                // EPIC
+                // ------------------------------------------------------------------
 
-   /**
-    * @param list<array{p:string,h:string|Closure}> $routes
-    */
-   protected function handle(array &$routes, bool $after_middleware = false): int
-   {
-      $num_handled = 0;
+                $this->exec($route['h'], $params);
 
-      $path = $this->request->getPath();
+                ++$numHandled;
 
-      foreach ($routes as $idx => $route) {
+                // вылетаем сразу после одного контроллера
+                if ($afterMiddleware) break;
+            }
 
-         $is_match = $this->patternMatches($route['p'], $path, $matches, \PREG_OFFSET_CAPTURE);
+            unset($routes[$idx]);
+        }
 
-         if ($is_match) {
-            $matches = \array_slice($matches, 1);
+        // записываем сколько было middleware
+        if (!$afterMiddleware) $this->countExecMiddleware = $numHandled;
 
-            // ------------------------------------------------------------------
-            // EPIC Bramus
-            // ------------------------------------------------------------------
-            $params = \array_map(static function ($match, $index) use ($matches) {
-               if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && \is_array($matches[$index + 1][0])) {
-                  if ($matches[$index + 1][0][1] > -1) {
-                     return \trim(\substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
-                  }
-               }
+        return $numHandled;
+    }
 
-               return isset($match[0][0]) && $match[0][1] != -1 ? \trim($match[0][0], '/') : null;
-            }, $matches, \array_keys($matches));
-            // ------------------------------------------------------------------
-            // EPIC
-            // ------------------------------------------------------------------
+    /**
+     * @param array<string|null> $params
+     * @return void
+     */
+    protected function execMethodClass(string $class, string $method, array $params)
+    {
+        if (!\class_exists($class)) return;
+        if ($method === '') {
+            $method = '__construct';
+            if (\method_exists($class, $method)) {
+                new $class(...$params);
+            }
+        } else {
+            if (\method_exists($class, $method)) {
+                (new $class)->{$method}(...$params);
+            }
+        }
+    }
 
-            $this->exec($route['h'], $params);
+    /**
+     * @param array<string|null> $params
+     * @param string|\Closure $handle
+     * @return void
+     */
+    protected function exec($handle, array $params = [])
+    {
+        if (!\is_string($handle)) {
+            $handle(...$params);
+        } elseif (Str::_contains($handle, '@')) {
+            // вызвать метод класса
+            [$handle, $method] = \explode('@', $handle);
+            $this->classHandle = $handle;
+            $this->execMethodClass($handle, $method, $params);
+        } else {
+            $this->classHandle = $handle;
+            $this->execMethodClass($handle, '', $params);
+        }
+    }
 
-            ++$num_handled;
-
-            // вылетаем сразу после одного контроллера
-            if ($after_middleware) break;
-         }
-
-         unset($routes[$idx]);
-      }
-
-      // записываем сколько было middleware
-      if (!$after_middleware) $this->count_exec_middleware = $num_handled;
-
-      return $num_handled;
-   }
-
-   /**
-    * @param array<string|null> $params
-    */
-   protected function execMethodClass(string $class, string $method, array $params): void
-   {
-      // try {
-      if (!\class_exists($class)) return;
-      if ($method === '') {
-         $method = '__construct';
-         if (\method_exists($class, $method)) {
-            new $class(...$params);
-         }
-      } else {
-         if (\method_exists($class, $method)) {
-            (new $class)->{$method}(...$params);
-         }
-      }
-      // } catch (\Throwable $e) {
-      // }
-   }
-
-   // protected function isPublicMethod(string $class, string $method): bool
-   // {
-   //    return (new \ReflectionMethod($class, $method))->isPublic();
-   // }
-
-   /**
-    * @param array<string|null> $params
-    */
-   protected function exec(string|Closure $handle, array $params = []): void
-   {
-      if (!\is_string($handle)) {
-         $handle(...$params);
-      } elseif (\str_contains($handle, '@')) {
-         // вызвать метод класса
-         list($handle, $method) = \explode('@', $handle);
-         $this->class_handle = $handle;
-         $this->execMethodClass($handle, $method, $params);
-      } else {
-         $this->class_handle = $handle;
-         $this->execMethodClass($handle, '', $params);
-      }
-   }
-
-   protected function prepareMethod(string $method): string
-   {
-      $m = \strtoupper($method);
-      if (\str_contains($m, 'ALL')) return self::METHODS;
-      return $m;
-   }
+    /**
+     * @return string
+     */
+    protected function prepareMethod(string $method)
+    {
+        $m = \strtoupper($method);
+        if (Str::_contains($m, 'ALL')) return self::METHODS;
+        return $m;
+    }
 }

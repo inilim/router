@@ -2,16 +2,14 @@
 
 namespace Inilim\Router;
 
-use Closure;
+use Inilim\Tool\Str;
 
-/**
- */
 abstract class RouteAbstract
 {
     /**
-     * @var string|Closure|null
+     * @var string|\Closure|null
      */
-    protected string|Closure|null $middleware = null;
+    protected $middleware = null;
 
     // ------------------------------------------------------------------
     // abstract
@@ -19,23 +17,36 @@ abstract class RouteAbstract
 
     abstract function getPattern(): string;
     abstract function getMethod(): string;
-    abstract function getHandle(): string|Closure;
+    /**
+     * @return string|\Closure
+     */
+    abstract function getHandle();
 
     // ------------------------------------------------------------------
     // public
     // ------------------------------------------------------------------
 
-    static function make(): static
+    /**
+     * @return static
+     */
+    static function make()
     {
         return new static;
     }
 
-    function getMiddleware(): string|Closure|null
+    /**
+     * @return string|\Closure|null
+     */
+    function getMiddleware()
     {
         return $this->middleware;
     }
 
-    function route(string|int|float ...$params): string
+    /**
+     * @param string|int|float ...$params
+     * @return string
+     */
+    function route(...$params): string
     {
         $p = $this->getPattern();
         if (!$params) return $p;
@@ -46,7 +57,7 @@ abstract class RouteAbstract
         /** @var string[] $match */
 
         foreach (\array_slice($params, 0, $count) as $idx => $param) {
-            $p = \_str()->replaceFirst($match[$idx], \strval($param), $p);
+            $p = Str::replaceFirst($match[$idx], \strval($param), $p);
             unset($match[$idx]);
         }
         if ($match) throw new \Exception('"args"');
