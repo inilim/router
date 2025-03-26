@@ -27,14 +27,6 @@ abstract class RouteAbstract
     // ------------------------------------------------------------------
 
     /**
-     * @return static
-     */
-    static function make()
-    {
-        return new static;
-    }
-
-    /**
      * @return string|\Closure|null
      */
     function getMiddleware()

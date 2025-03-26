@@ -12,47 +12,53 @@ use Inilim\Router\RouteAbstract;
  */
 final class Router
 {
+    protected const METHODS = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
+
     /**
      * @var Request
      */
     protected $request;
 
-    protected const METHODS = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
+    /**
+     * @var list<array{p:string,h:string|\Closure}>
+     */
+    protected $routes = [];
+    /**
+     * @var list<array{p:string,h:string|\Closure}>
+     */
+    protected $middleware = [];
+    /**
+     * @var array<string,string[]>
+     */
+    protected $cache = [];
+    /**
+     * @var \Closure|null
+     */
+    protected $notFoundCallback = null;
+    /**
+     * @var int|null
+     */
+    protected $numHundledMiddleware = null;
+    /**
+     * @var \Closure|null
+     */
+    protected $handleParamsMiddleware = null;
+    /**
+     * @var \Closure|null
+     */
+    protected $handleParamsController = null;
+    /**
+     * @var class-string|null
+     */
+    protected $classHandle = null;
 
-    /**
-     * @var list<array{p:string,h:string|\Closure}>
-     */
-    protected array $routes               = [];
-    /**
-     * @var list<array{p:string,h:string|\Closure}>
-     */
-    protected array $middleware           = [];
-    protected ?\Closure $notFoundCallback = null;
-    protected int $countExecMiddleware    = 0;
-    protected ?string $classHandle        = null;
+    // ---------------------------------------------
+    // 
+    // ---------------------------------------------
 
     function __construct(Request $request)
     {
         $this->request = $request;
-    }
-
-    /**
-     * @param RouteAbstract $route
-     * @return self
-     */
-    function addRoute(RouteAbstract $route)
-    {
-        $method  = $route->getMethod();
-        $pattern = $route->getPattern();
-        $this->route(
-            $method,
-            $pattern,
-            $route->getHandle(),
-        );
-        $m = $route->getMiddleware();
-        if ($m === null) return $this;
-        $this->middleware($method, $pattern, $m);
-        return $this;
     }
 
     /**
@@ -97,17 +103,39 @@ final class Router
     function route(string $methods, string $pattern, $handle, ...$middlewares)
     {
         $r = $this->save($methods, $pattern, $handle);
-        if ($r === null) return $this;
+        if ($r === null) {
+            return $this;
+        }
 
         $this->routes[] = $r;
 
         if ($middlewares) {
             foreach ($middlewares as &$m) {
-                $this->middleware($methods, $pattern, $m);
+                $r['h'] = $m;
+                $this->middleware[] = $r;
             }
         }
         return $this;
     }
+
+    /**
+     * @param RouteAbstract $route
+     * @return self
+     */
+    // function addRoute(RouteAbstract $route)
+    // {
+    //     $method  = $route->getMethod();
+    //     $pattern = $route->getPattern();
+    //     $this->route(
+    //         $method,
+    //         $pattern,
+    //         $route->getHandle(),
+    //     );
+    //     $m = $route->getMiddleware();
+    //     if ($m === null) return $this;
+    //     $this->middleware($method, $pattern, $m);
+    //     return $this;
+    // }
 
     /**
      * @param string|\Closure $handle
@@ -122,9 +150,9 @@ final class Router
     /**
      * @return int
      */
-    function getCountExecMiddleware()
+    function getNumHundledMiddleware()
     {
-        return $this->countExecMiddleware;
+        return $this->numHundledMiddleware ?? 0;
     }
 
     /**
@@ -136,11 +164,34 @@ final class Router
     }
 
     /**
-     * @return void
+     * @return self
      */
     function set404(\Closure $handle)
     {
         $this->notFoundCallback = $handle;
+        return $this;
+    }
+
+    /**
+     * @template T of array<string|null>
+     * @param \Closure(T $params)): T $handle
+     * @return self
+     */
+    function setHandleParamsMiddleware(\Closure $handle)
+    {
+        $this->handleParamsMiddleware = $handle;
+        return $this;
+    }
+
+    /**
+     * @template T of array<string|null>
+     * @param \Closure(T $params)): T $handle
+     * @return self
+     */
+    function setHandleParamsController(\Closure $handle)
+    {
+        $this->handleParamsController = $handle;
+        return $this;
     }
 
     /**
@@ -163,7 +214,8 @@ final class Router
      */
     protected function save($methods, $pattern, $handle)
     {
-        if (!Str::_contains($this->prepareMethod($methods), $this->request->getMethod())) {
+        $m = $this->request->getMethod();
+        if ($m === '' || !Str::_contains($this->prepareMethod($methods), $m)) {
             return null;
         }
 
@@ -204,7 +256,7 @@ final class Router
      * @param list<array{p:string,h:string|\Closure}> $routesOrMiddlewares
      * @return int
      */
-    protected function handle(array &$routesOrMiddlewares, bool $afterMiddleware = false)
+    protected function handle(array &$routesOrMiddlewares, bool $isController = false)
     {
         $numHandled = 0;
 
@@ -212,58 +264,86 @@ final class Router
 
         foreach ($routesOrMiddlewares as $idx => &$rOrM) {
 
-            $isMatch = $this->patternMatches($rOrM['p'], $path, $matches, \PREG_OFFSET_CAPTURE);
+            $hash = \md5($rOrM['p']);
 
-            if ($isMatch) {
+            if (isset($this->cache[$hash])) {
+                $isMatch = true;
+                $params  = $this->cache[$hash];
+            } else {
+                $isMatch = $this->patternMatches($rOrM['p'], $path, $matches, \PREG_OFFSET_CAPTURE);
+            }
+
+            if (!$isMatch) {
+                unset($routesOrMiddlewares[$idx]);
+                continue;
+            }
+
+            if (!isset($params)) {
                 $matches = \array_slice($matches, 1);
 
                 // ------------------------------------------------------------------
                 // EPIC Bramus
                 // ------------------------------------------------------------------
-                $params = \array_map(static function ($match, $index) use ($matches) {
-                    if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && \is_array($matches[$index + 1][0])) {
-                        if ($matches[$index + 1][0][1] > -1) {
-                            return \trim(\substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
+
+                $params = [];
+                foreach ($matches as $idx => &$match) {
+                    $idx++;
+                    if (isset($matches[$idx]) && isset($matches[$idx][0]) && \is_array($matches[$idx][0])) {
+                        if ($matches[$idx][0][1] > -1) {
+                            $params[] = \trim(\substr($match[0][0], 0, $matches[$idx][0][1] - $match[0][1]), '/');
+                            continue;
                         }
                     }
 
-                    return isset($match[0][0]) && $match[0][1] != -1 ? \trim($match[0][0], '/') : null;
-                }, $matches, \array_keys($matches));
+                    $params[] = isset($match[0][0]) && $match[0][1] != -1 ? \trim($match[0][0], '/') : null;
+                }
+                $this->cache[$hash] = $params;
+                $matches            = [];
+
+                // ---------------------------------------------
+                // 
+                // ---------------------------------------------
+
+                // $this->cache[$hash] = $params = \array_map(static function ($match, $index) use ($matches) {
+                //     if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && \is_array($matches[$index + 1][0])) {
+                //         if ($matches[$index + 1][0][1] > -1) {
+                //             return \trim(\substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
+                //         }
+                //     }
+
+                //     return isset($match[0][0]) && $match[0][1] != -1 ? \trim($match[0][0], '/') : null;
+                // }, $matches, \array_keys($matches));
+                // $matches = [];
+
                 // ------------------------------------------------------------------
                 // EPIC
                 // ------------------------------------------------------------------
+            } // endif
 
-                $this->exec($rOrM['h'], $params);
+            /** @var array<string|int, string|null> $params */
 
-                ++$numHandled;
+            if ($isController) {
+                $this->cache = [];
+            }
 
-                // вылетаем сразу после одного контроллера
-                if ($afterMiddleware) break;
+            $this->exec($rOrM['h'], $params);
+
+            ++$numHandled;
+
+            // вылетаем сразу после одного контроллера
+            if ($isController) {
+                break;
             }
 
             unset($routesOrMiddlewares[$idx]);
-        }
+        } // endforeach
 
-        // записываем сколько было middleware
-        if (!$afterMiddleware) $this->countExecMiddleware = $numHandled;
+        if (!$isController) {
+            // записываем сколько было middleware
+            $this->numHundledMiddleware = $numHandled;
+        }
 
         return $numHandled;
-    }
-
-    /**
-     * @param array<string|null> $params
-     * @return void
-     */
-    protected function execMethodClass(string $class, string $method, array $params)
-    {
-        if (!\class_exists($class)) return;
-        if ($method === '') {
-            new $class(...$params);
-        } else {
-            if (\method_exists($class, $method)) {
-                (new $class)->{$method}(...$params);
-            }
-        }
     }
 
     /**
@@ -273,16 +353,46 @@ final class Router
      */
     protected function exec($handle, array $params = [])
     {
+        if ($this->numHundledMiddleware === null) {
+            $handleParams = $this->handleParamsMiddleware;
+        } else {
+            $handleParams = $this->handleParamsController;
+        }
+
+        if ($handleParams) {
+            $params = $handleParams($params);
+        }
+
+        // ---------------------------------------------
+        // 
+        // ---------------------------------------------
+
         if (!\is_string($handle)) {
+            $this->classHandle = \Closure::class;
             $handle(...$params);
+            return;
         } elseif (Str::_contains($handle, '@')) {
-            // вызвать метод класса
             [$handle, $method] = \explode('@', $handle);
             $this->classHandle = $handle;
-            $this->execMethodClass($handle, $method, $params);
         } else {
             $this->classHandle = $handle;
-            $this->execMethodClass($handle, '', $params);
+            $method            = '';
+        }
+
+        // ---------------------------------------------
+        // 
+        // ---------------------------------------------
+
+        if (!\class_exists($handle)) {
+            return;
+        }
+
+        if ($method === '') {
+            new $handle(...$params);
+        } else {
+            if (\method_exists($handle, $method)) {
+                (new $handle)->{$method}(...$params);
+            }
         }
     }
 

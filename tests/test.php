@@ -1,12 +1,14 @@
 <?php
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once \dirname(__DIR__) . '/vendor/autoload.php';
 
 use Inilim\Dump\Dump;
 use Inilim\Request\Request;
 use Inilim\Router\Router;
 
 Dump::init();
+$_SERVER['REQUEST_URI'] = '/tests';
+
 
 $m = [
     static function () {
@@ -22,7 +24,7 @@ $m = [
 
 $router = new Router(Request::createFromGlobals());
 
-$router->route('GET', '/tests/test.php', static function () {
+$router->route('GET', 'tests', static function () {
     // d(func_get_args());
 }, ...$m);
 
