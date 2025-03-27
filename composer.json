@@ -8,6 +8,16 @@
             "Inilim\\Router\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Inilim\\Router\\Test\\": "tests/"
+        }
+    },
+    "extra": {
+        "exclude-from-files": [
+            "symfony/var-dumper/Resources/functions/dump.php"
+        ]
+    },
     "authors": [
         {
             "name": "inilim"
@@ -15,6 +25,19 @@
     ],
     "minimum-stability": "dev",
     "prefer-stable": true,
+    "scripts": {
+        "tests": [
+            "php vendor/bin/phpunit tests"
+        ],
+        "stan": [
+            "php vendor/bin/phpstan analyze"
+        ]
+    },
+    "config": {
+        "allow-plugins": {
+            "mcaskill/composer-exclude-files": true
+        }
+    },
     "require": {
         "php": ">=7.4",
         "inilim/request": "dev-main",
@@ -22,6 +45,8 @@
     },
     "require-dev": {
         "phpstan/phpstan": "@stable",
+        "mcaskill/composer-exclude-files": "^4.0",
+        "phpunit/phpunit": "^11.5",
         "inilim/dump": "dev-main"
     }
 }

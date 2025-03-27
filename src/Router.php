@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Inilim\Router;
 
 use Inilim\Tool\Str;
 use Inilim\Request\Request;
-use Inilim\Router\RouteAbstract;
 
 /**
  * @author Bram(us) Van Damme <bramus@bram.us>
@@ -62,23 +63,57 @@ final class Router
     }
 
     /**
+     * @return string
+     */
+    function getRequestMethod()
+    {
+        $m = $this->request->getMethod();
+        if ($m === 'HEAD') {
+            return 'GET';
+        }
+        return $m;
+    }
+
+    /**
+     * @return string
+     */
+    function getCurrentUri()
+    {
+        return $this->request->getPath();
+    }
+
+    /**
      * @return void
      */
     function run(?\Closure $callback = null)
     {
-        if ($this->middleware) $this->handle($this->middleware);
-        $this->middleware = [];
+        // If it's a HEAD request override it to being GET and prevent any output, as per HTTP Specification
+        // @url http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.4
+        $isOverrideHead = $this->isOverrideHead();
+        if ($isOverrideHead) {
+            \ob_start();
+        }
+
+        if ($this->middleware) {
+            $this->handle($this->middleware);
+            $this->middleware = [];
+        }
 
         $numHandled = 0;
         if ($this->routes) {
             $numHandled = $this->handle($this->routes, true);
+            $this->routes = [];
         }
-        $this->routes = [];
 
         if ($numHandled === 0) {
             $this->trigger404();
         } else {
             if ($callback) $callback();
+        }
+
+        // If it originally was a HEAD request, clean up after ourselves by emptying the output buffer
+        if ($isOverrideHead) {
+            \ob_end_clean();
         }
     }
 
@@ -88,7 +123,7 @@ final class Router
      */
     function middleware(string $methods, string $pattern, $handle)
     {
-        $r = $this->save($methods, $pattern, $handle);
+        $r = $this->prepareRoute($methods, $pattern, $handle);
         if ($r === null) return $this;
 
         $this->middleware[] = $r;
@@ -102,7 +137,7 @@ final class Router
      */
     function route(string $methods, string $pattern, $handle, ...$middlewares)
     {
-        $r = $this->save($methods, $pattern, $handle);
+        $r = $this->prepareRoute($methods, $pattern, $handle);
         if ($r === null) {
             return $this;
         }
@@ -117,25 +152,6 @@ final class Router
         }
         return $this;
     }
-
-    /**
-     * @param RouteAbstract $route
-     * @return self
-     */
-    // function addRoute(RouteAbstract $route)
-    // {
-    //     $method  = $route->getMethod();
-    //     $pattern = $route->getPattern();
-    //     $this->route(
-    //         $method,
-    //         $pattern,
-    //         $route->getHandle(),
-    //     );
-    //     $m = $route->getMiddleware();
-    //     if ($m === null) return $this;
-    //     $this->middleware($method, $pattern, $m);
-    //     return $this;
-    // }
 
     /**
      * @param string|\Closure $handle
@@ -156,7 +172,7 @@ final class Router
     }
 
     /**
-     * @return string|null
+     * @return class-string|null
      */
     function getClassHandle()
     {
@@ -164,6 +180,7 @@ final class Router
     }
 
     /**
+     * @param \Closure():void $handle
      * @return self
      */
     function set404(\Closure $handle)
@@ -174,7 +191,7 @@ final class Router
 
     /**
      * @template T of array<string|null>
-     * @param \Closure(T $params)): T $handle
+     * @param \Closure(T $params, Request $request): T $handle
      * @return self
      */
     function setHandleParamsMiddleware(\Closure $handle)
@@ -185,7 +202,7 @@ final class Router
 
     /**
      * @template T of array<string|null>
-     * @param \Closure(T $params)): T $handle
+     * @param \Closure(T $params, Request $request): T $handle
      * @return self
      */
     function setHandleParamsController(\Closure $handle)
@@ -199,7 +216,9 @@ final class Router
      */
     function trigger404()
     {
-        if ($this->notFoundCallback) ($this->notFoundCallback)();
+        if ($this->notFoundCallback) {
+            $this->notFoundCallback->__invoke();
+        }
     }
 
     // ------------------------------------------------------------------
@@ -212,35 +231,27 @@ final class Router
      * @param string|\Closure $handle
      * @return array{p:string,h:string|\Closure}|null
      */
-    protected function save($methods, $pattern, $handle)
+    protected function prepareRoute($methods, $pattern, $handle)
     {
-        $m = $this->request->getMethod();
+        $m = $this->getRequestMethod();
         if ($m === '' || !Str::_contains($this->prepareMethod($methods), $m)) {
             return null;
         }
 
         return [
-            'p' => $this->preparePattern($pattern),
+            'p' => '/' . \trim($pattern, '/'),
             'h' => $handle,
         ];
     }
 
     /**
      * @param string $pattern
-     * @return string
-     */
-    protected function preparePattern($pattern)
-    {
-        return '/' . \trim($pattern, '/');
-    }
-
-    /**
-     * @param string $pattern
      * @param string $uri
-     * @param array<mixed> $matches
+     * @param mixed[] $matches
+     * @param int $flags
      * @return bool -> is match yes/no
      */
-    protected function patternMatches($pattern, $uri, ?array &$matches, int $flags)
+    protected function patternMatches($pattern, $uri, &$matches, $flags)
     {
         $pattern = \str_replace(
             ['{int_unsigned}',     '{int}',                 '{letters}'],
@@ -253,16 +264,16 @@ final class Router
     }
 
     /**
-     * @param list<array{p:string,h:string|\Closure}> $routesOrMiddlewares
+     * @param list<array{p:string,h:string|\Closure}> $controllerOrMiddlewares
      * @return int
      */
-    protected function handle(array &$routesOrMiddlewares, bool $isController = false)
+    protected function handle(array &$controllerOrMiddlewares, bool $isController = false)
     {
         $numHandled = 0;
 
         $path = $this->request->getPath();
 
-        foreach ($routesOrMiddlewares as $idx => &$rOrM) {
+        foreach ($controllerOrMiddlewares as $idx => &$rOrM) {
 
             $hash = \md5($rOrM['p']);
 
@@ -274,50 +285,27 @@ final class Router
             }
 
             if (!$isMatch) {
-                unset($routesOrMiddlewares[$idx]);
+                unset($controllerOrMiddlewares[$idx]);
                 continue;
             }
 
             if (!isset($params)) {
                 $matches = \array_slice($matches, 1);
 
-                // ------------------------------------------------------------------
-                // EPIC Bramus
-                // ------------------------------------------------------------------
-
                 $params = [];
-                foreach ($matches as $idx => &$match) {
-                    $idx++;
-                    if (isset($matches[$idx]) && isset($matches[$idx][0]) && \is_array($matches[$idx][0])) {
-                        if ($matches[$idx][0][1] > -1) {
-                            $params[] = \trim(\substr($match[0][0], 0, $matches[$idx][0][1] - $match[0][1]), '/');
+                foreach ($matches as $idx2 => &$match) {
+                    $idx2++;
+                    if (isset($matches[$idx2]) && isset($matches[$idx2][0]) && \is_array($matches[$idx2][0])) {
+                        if ($matches[$idx2][0][1] > -1) {
+                            $params[] = \trim(\substr($match[0][0], 0, $matches[$idx2][0][1] - $match[0][1]), '/');
                             continue;
                         }
                     }
-
                     $params[] = isset($match[0][0]) && $match[0][1] != -1 ? \trim($match[0][0], '/') : null;
                 }
+
                 $this->cache[$hash] = $params;
                 $matches            = [];
-
-                // ---------------------------------------------
-                // 
-                // ---------------------------------------------
-
-                // $this->cache[$hash] = $params = \array_map(static function ($match, $index) use ($matches) {
-                //     if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && \is_array($matches[$index + 1][0])) {
-                //         if ($matches[$index + 1][0][1] > -1) {
-                //             return \trim(\substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
-                //         }
-                //     }
-
-                //     return isset($match[0][0]) && $match[0][1] != -1 ? \trim($match[0][0], '/') : null;
-                // }, $matches, \array_keys($matches));
-                // $matches = [];
-
-                // ------------------------------------------------------------------
-                // EPIC
-                // ------------------------------------------------------------------
             } // endif
 
             /** @var array<string|int, string|null> $params */
@@ -327,15 +315,14 @@ final class Router
             }
 
             $this->exec($rOrM['h'], $params);
+            unset($controllerOrMiddlewares[$idx]);
 
-            ++$numHandled;
+            $numHandled++;
 
             // вылетаем сразу после одного контроллера
             if ($isController) {
                 break;
             }
-
-            unset($routesOrMiddlewares[$idx]);
         } // endforeach
 
         if (!$isController) {
@@ -360,7 +347,7 @@ final class Router
         }
 
         if ($handleParams) {
-            $params = $handleParams($params);
+            $params = $handleParams($params, $this->request);
         }
 
         // ---------------------------------------------
@@ -394,6 +381,14 @@ final class Router
                 (new $handle)->{$method}(...$params);
             }
         }
+    }
+
+    /**
+     * @return bool
+     */
+    protected function isOverrideHead()
+    {
+        return $this->request->getMethod() === 'HEAD';
     }
 
     /**

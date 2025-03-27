@@ -1,3 +1,4 @@
 /vendor
 /.htaccess
 /composer.lock
+/.phpunit.result.cache

@@ -7,7 +7,24 @@ use Inilim\Request\Request;
 use Inilim\Router\Router;
 
 Dump::init();
-$_SERVER['REQUEST_URI'] = '/tests';
+
+
+
+
+
+de($_SERVER);
+
+de();
+
+$_SERVER['REQUEST_URI'] = '/tests/123/';
+
+class Test
+{
+    function __invoke()
+    {
+        d(func_get_args());
+    }
+}
 
 
 $m = [
@@ -24,8 +41,8 @@ $m = [
 
 $router = new Router(Request::createFromGlobals());
 
-$router->route('GET', 'tests', static function () {
-    // d(func_get_args());
-}, ...$m);
+$router->route('GET', 'tests/{int}', 'Test@__invoke', ...$m);
+
+// de($router);
 
 $router->run();
