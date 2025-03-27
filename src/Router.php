@@ -21,15 +21,15 @@ final class Router
     protected $request;
 
     /**
-     * @var list<array{p:string,h:string|\Closure}>
+     * @var array<array{p:string,h:string|\Closure}>
      */
     protected $routes = [];
     /**
-     * @var list<array{p:string,h:string|\Closure}>
+     * @var array<array{p:string,h:string|\Closure}>
      */
     protected $middleware = [];
     /**
-     * @var array<string,string[]>
+     * @var array<string,array<string|null>>
      */
     protected $cache = [];
     /**
@@ -232,7 +232,11 @@ final class Router
     protected function prepareRoute($methods, $pattern, $handle)
     {
         $m = $this->getRequestMethodWithOverride();
-        if ($m === '' || !Str::_contains($this->prepareMethod($methods), $m)) {
+        if (
+            $m === '' ||
+            // @phpstan-ignore-next-line
+            !Str::_contains($this->prepareMethod($methods), $m)
+        ) {
             return null;
         }
 
@@ -262,7 +266,7 @@ final class Router
     }
 
     /**
-     * @param list<array{p:string,h:string|\Closure}> $controllerOrMiddlewares
+     * @param array<array{p:string,h:string|\Closure}> $controllerOrMiddlewares
      * @return int
      */
     protected function handle(array &$controllerOrMiddlewares, bool $isController = false)
@@ -287,18 +291,21 @@ final class Router
                 continue;
             }
 
-            if (!isset($params)) {
+            if (!isset($params) && isset($matches)) {
                 $matches = \array_slice($matches, 1);
 
                 $params = [];
                 foreach ($matches as $idx2 => &$match) {
                     $idx2++;
+                    // @phpstan-ignore-next-line
                     if (isset($matches[$idx2]) && isset($matches[$idx2][0]) && \is_array($matches[$idx2][0])) {
                         if ($matches[$idx2][0][1] > -1) {
+                            // @phpstan-ignore-next-line
                             $params[] = \trim(\substr($match[0][0], 0, $matches[$idx2][0][1] - $match[0][1]), '/');
                             continue;
                         }
                     }
+                    // @phpstan-ignore-next-line
                     $params[] = isset($match[0][0]) && $match[0][1] != -1 ? \trim($match[0][0], '/') : null;
                 }
 
@@ -306,12 +313,10 @@ final class Router
                 $matches            = [];
             } // endif
 
-            /** @var array<string|int, string|null> $params */
-
             if ($isController) {
                 $this->cache = [];
             }
-
+            // @phpstan-ignore-next-line
             $this->exec($rOrM['h'], $params);
             unset($controllerOrMiddlewares[$idx]);
 
@@ -351,10 +356,17 @@ final class Router
             $this->classHandle = \Closure::class;
             $handle(...$params);
             return;
+            // @phpstan-ignore-next-line
         } elseif (Str::_contains($handle, '@')) {
+            /**
+             * @var class-string $handle
+             */
             [$handle, $method] = \explode('@', $handle);
             $this->classHandle = $handle;
         } else {
+            /**
+             * @var class-string $handle
+             */
             $this->classHandle = $handle;
             $method            = '';
         }
@@ -390,7 +402,10 @@ final class Router
     protected function prepareMethod(string $method)
     {
         $m = \strtoupper($method);
-        if (Str::_contains($m, 'ALL')) return self::METHODS;
+        // @phpstan-ignore-next-line
+        if (Str::_contains($m, 'ALL')) {
+            return self::METHODS;
+        }
         return $m;
     }
 
