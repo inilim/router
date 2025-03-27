@@ -254,13 +254,13 @@ final class Router
     protected function patternMatches($pattern, $uri, &$matches, $flags)
     {
         $pattern = \str_replace(
-            ['{int_unsigned}',     '{int}',                 '{letters}'],
-            ['(0|[1-9][0-9]{0,})', '(0|\-?[1-9][0-9]{0,})', '([a-zA-Z]+)'],
+            ['{_NUMBERS_UNSIGNED_}', '{_NUMBERS_}', '{_LETTERS_}'],
+            ['([0-9]+)',             '(\-?[0-9]+)', '(\p{L}+)'],
             $pattern
         );
         $pattern = \preg_replace('/\/{(.*?)}/', '/(.*?)', $pattern);
 
-        return (bool) \preg_match_all('#^' . $pattern . '$#', $uri, $matches, $flags);
+        return (bool) \preg_match_all('#^' . $pattern . '$#u', $uri, $matches, $flags);
     }
 
     /**

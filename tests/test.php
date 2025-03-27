@@ -9,10 +9,16 @@ use Inilim\Router\Router;
 Dump::init();
 
 
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_SERVER['REQUEST_URI'] = '/show/qwerty_uiopasdfghjklzxcvbnm';
+$router = new \Inilim\Router\Router(Request::createFromGlobals());
 
+$router->route('GET', '/show/{letters}', static function ($string) {
+    echo 'letters: ' . $string;
+});
 
+$router->run();
 
-de($_SERVER);
 
 de();
 
