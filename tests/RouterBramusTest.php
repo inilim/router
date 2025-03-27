@@ -26,7 +26,7 @@ class RouterBramusTest extends TestCase
 
     function testInit()
     {
-        $this->assertInstanceOf(Router::class, new \Inilim\Router\Router(Request::createFromGlobals()));
+        $this->assertInstanceOf(Router::class, new Router(Request::createFromGlobals()));
     }
 
     function testUri()
@@ -43,7 +43,7 @@ class RouterBramusTest extends TestCase
 
         $this->assertEquals(
             '/about/whatever',
-            $method->invoke(new \Inilim\Router\Router(Request::createFromGlobals()))
+            $method->invoke(new Router(Request::createFromGlobals()))
         );
     }
 
@@ -52,7 +52,7 @@ class RouterBramusTest extends TestCase
         $_SERVER['REQUEST_URI'] = '/about';
 
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/about', static function () {
             echo 'about';
         });
@@ -68,7 +68,7 @@ class RouterBramusTest extends TestCase
 
     function testRequestMethods()
     {
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
 
         // Test GET
         ob_start();
@@ -147,7 +147,7 @@ class RouterBramusTest extends TestCase
     function testShorthandAny()
     {
         $_SERVER['REQUEST_URI'] = '/';
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $handle = static function () {
             echo 'all';
         };
@@ -217,7 +217,7 @@ class RouterBramusTest extends TestCase
         $_SERVER['REQUEST_URI'] = '/hello/bramus';
 
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/hello/(\w+)', function ($name) {
             echo 'Hello ' . $name;
         });
@@ -236,7 +236,7 @@ class RouterBramusTest extends TestCase
         $_SERVER['REQUEST_URI'] = '/hello/bramus/sumarb';
 
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/hello/(\w+)/(\w+)', static function ($name, $lastname) {
             echo 'Hello ' . $name . ' ' . $lastname;
         });
@@ -255,7 +255,7 @@ class RouterBramusTest extends TestCase
         $_SERVER['REQUEST_URI'] = '/hello/bramus/sumarb';
 
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/hello/{name}/{lastname}', static function ($name, $lastname) {
             echo 'Hello ' . $name . ' ' . $lastname;
         });
@@ -274,7 +274,7 @@ class RouterBramusTest extends TestCase
         $_SERVER['REQUEST_URI'] = '/hello/bramus/sumarb';
 
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/hello/{arg1}/{arg2}', static function ($arg1, $arg2) {
             echo 'Hello ' . $arg1 . ' ' . $arg2;
         });
@@ -293,7 +293,7 @@ class RouterBramusTest extends TestCase
         $_SERVER['REQUEST_URI'] = '/hello/bramus/sumarb';
 
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/hello/{това}/{това}', static function ($arg1, $arg2) {
             echo 'Hello ' . $arg1 . ' ' . $arg2;
         });
@@ -312,7 +312,7 @@ class RouterBramusTest extends TestCase
         $_SERVER['REQUEST_URI'] = '/hello/bramus/sumarb';
 
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/hello/{😂}/{😅}', static function ($arg1, $arg2) {
             echo 'Hello ' . $arg1 . ' ' . $arg2;
         });
@@ -331,7 +331,7 @@ class RouterBramusTest extends TestCase
         $_SERVER['REQUEST_URI'] = '/bg/това';
 
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/bg/{arg}', function ($arg) {
             echo 'BG: ' . $arg;
         });
@@ -349,7 +349,7 @@ class RouterBramusTest extends TestCase
         $_SERVER['REQUEST_URI'] = '/bg/това/слъг';
 
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/bg/{arg}/{arg}', function ($arg1, $arg2) {
             echo 'BG: ' . $arg1 . ' - ' . $arg2;
         });
@@ -368,7 +368,7 @@ class RouterBramusTest extends TestCase
         $_SERVER['REQUEST_URI'] = '/emoji/%F0%9F%92%A9'; // 💩
 
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/emoji/{emoji}', function ($emoji) {
             echo 'Emoji: ' . $emoji;
         });
@@ -384,7 +384,7 @@ class RouterBramusTest extends TestCase
 
     function testDynamicRouteWithOptionalSubpatterns()
     {
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $handle = static function ($name = null) {
             echo 'Hello ' . (($name) ? $name : 'stranger');
         };
@@ -414,7 +414,7 @@ class RouterBramusTest extends TestCase
         $_SERVER['REQUEST_URI'] = '/hello/bramus/page3';
 
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/(.*)/page([0-9]+)', static  function ($place, $page) {
             echo 'Hello ' . $place . ' page : ' . $page;
         });
@@ -431,7 +431,7 @@ class RouterBramusTest extends TestCase
     function testDynamicRouteWithOptionalNestedSubpatterns()
     {
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $handle = static function ($year = null, $month = null, $day = null, $slug = null) {
             if ($year === null) {
                 echo 'Blog overview';
@@ -503,7 +503,7 @@ class RouterBramusTest extends TestCase
     function testDynamicRouteWithNestedOptionalSubpatterns()
     {
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $handle = static function ($name1 = null, $name2 = null) {
             echo 'Hello ' . (($name1) ? $name1 : 'stranger') . ' ' . (($name2) ? $name2 : 'stranger');
         };
@@ -534,7 +534,7 @@ class RouterBramusTest extends TestCase
         ob_start();
         $_SERVER['REQUEST_URI'] = '/hello/bramus';
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '(.*)', static function ($name) {
             echo 'Hello ' . $name;
         });
@@ -551,7 +551,7 @@ class RouterBramusTest extends TestCase
         ob_start();
         $_SERVER['REQUEST_URI'] = '/hello/bramus/sumarb';
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/hello/(.*)', static function ($name) {
             echo 'Hello ' . $name;
         });
@@ -565,7 +565,7 @@ class RouterBramusTest extends TestCase
     function test404()
     {
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $handle = static function () {
             echo 'home';
         };
@@ -601,7 +601,7 @@ class RouterBramusTest extends TestCase
         ob_start();
         $_SERVER['REQUEST_URI'] = '/';
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/', static function () use ($router) {
             $router->trigger404();
         });
@@ -618,7 +618,7 @@ class RouterBramusTest extends TestCase
     function testBeforeRouterMiddleware()
     {
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->middleware('GET|POST', '/.*', static function () {
             echo 'before ';
         });
@@ -668,7 +668,7 @@ class RouterBramusTest extends TestCase
         ob_start();
         $_SERVER['REQUEST_URI'] = '/';
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/', static function () {
             echo 'home';
         });
@@ -685,7 +685,7 @@ class RouterBramusTest extends TestCase
     {
         $_SERVER['REQUEST_URI'] = '/show/foo';
 
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/show/(.*)', RouterTestController::class . '@show');
 
         ob_start();
@@ -712,14 +712,14 @@ class RouterBramusTest extends TestCase
 
         $this->assertEquals(
             'PUT',
-            $method->invoke(new \Inilim\Router\Router(Request::createFromGlobals()))
+            $method->invoke(new Router(Request::createFromGlobals()))
         );
     }
 
     function testControllerMethodReturningFalse()
     {
         // Create Router
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
 
         // Test returnFalse
         ob_start();

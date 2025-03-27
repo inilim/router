@@ -4,6 +4,8 @@ namespace Inilim\Router\Test\ForTest;
 
 class RouterTestController
 {
+    function empty() {}
+
     function show($id)
     {
         echo $id;

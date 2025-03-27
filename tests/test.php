@@ -10,14 +10,23 @@ Dump::init();
 
 
 $_SERVER['REQUEST_METHOD'] = 'GET';
-$_SERVER['REQUEST_URI']    = '/show/привет';
+$_SERVER['REQUEST_URI'] = '/show/{_INT_}/{_LETTERS_}';
+$router = new Router(Request::createFromGlobals());
 
-$router = new \Inilim\Router\Router(Request::createFromGlobals());
+// ---------------------------------------------
+// Assert
+// ---------------------------------------------
+$router->setHandleParamsController(function ($params, $request) {
 
-$router->route('GET', '/show/{letters}', static function ($string) {
-    echo 'letters: ' . $string;
+    // $this->assertEquals(['123', 'abc'], $params);
+    // $this->assertIsArray($params);
+    // $this->assertInstanceOf(Request::class,  $request);
+
+    return $params;
 });
-
+$router->route('GET', '/show/123/abc', function ($val1, $val2) {
+    de(123123);
+});
 $router->run();
 
 

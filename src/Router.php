@@ -67,11 +67,7 @@ final class Router
      */
     function getRequestMethod()
     {
-        $m = $this->request->getMethod();
-        if ($m === 'HEAD') {
-            return 'GET';
-        }
-        return $m;
+        return $this->request->getMethod();
     }
 
     /**
@@ -95,8 +91,10 @@ final class Router
         }
 
         if ($this->middleware) {
-            $this->handle($this->middleware);
-            $this->middleware = [];
+            $this->numHundledMiddleware = $this->handle($this->middleware);
+            $this->middleware           = [];
+        } else {
+            $this->numHundledMiddleware = 0;
         }
 
         $numHandled = 0;
@@ -233,7 +231,7 @@ final class Router
      */
     protected function prepareRoute($methods, $pattern, $handle)
     {
-        $m = $this->getRequestMethod();
+        $m = $this->getRequestMethodWithOverride();
         if ($m === '' || !Str::_contains($this->prepareMethod($methods), $m)) {
             return null;
         }
@@ -325,11 +323,6 @@ final class Router
             }
         } // endforeach
 
-        if (!$isController) {
-            // записываем сколько было middleware
-            $this->numHundledMiddleware = $numHandled;
-        }
-
         return $numHandled;
     }
 
@@ -398,6 +391,18 @@ final class Router
     {
         $m = \strtoupper($method);
         if (Str::_contains($m, 'ALL')) return self::METHODS;
+        return $m;
+    }
+
+    /**
+     * @return string
+     */
+    protected function getRequestMethodWithOverride()
+    {
+        $m = $this->request->getMethod();
+        if ($m === 'HEAD') {
+            return 'GET';
+        }
         return $m;
     }
 }

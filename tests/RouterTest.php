@@ -3,8 +3,10 @@
 namespace Inilim\Router\Test;
 
 use Inilim\Dump\Dump;
+use Inilim\Router\Router;
 use Inilim\Request\Request;
 use Inilim\Router\Test\TestCase;
+use Inilim\Router\Test\ForTest\RouterTestController;
 use Inilim\Router\Test\ForTest\RouterTestWithConstructController;
 
 Dump::init();
@@ -27,7 +29,7 @@ class RouterTest extends TestCase
     {
         $_SERVER['REQUEST_URI'] = '/show/';
 
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
         $router->route('GET', '/show/', RouterTestWithConstructController::class);
 
         ob_start();
@@ -39,9 +41,202 @@ class RouterTest extends TestCase
         ob_end_clean();
     }
 
+    function testMethod_isOverrideHead()
+    {
+        $router = new Router(Request::createFromGlobals());
+        $method = new \ReflectionMethod(
+            Router::class,
+            'isOverrideHead'
+        );
+        $method->setAccessible(true);
+
+        // ---------------------------------------------
+        // Assert
+        // ---------------------------------------------
+
+        $_SERVER['REQUEST_METHOD'] = 'HEAD';
+        $this->overrideRequest($router);
+        $this->assertTrue($method->invoke($router));
+
+        // ---------------------------------------------
+        // Assert
+        // ---------------------------------------------
+
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $this->overrideRequest($router);
+        $this->assertFalse($method->invoke($router));
+
+        // ---------------------------------------------
+        // Assert
+        // ---------------------------------------------
+
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $this->overrideRequest($router);
+        $this->assertFalse($method->invoke($router));
+    }
+
+    function testMethod_setHandleParamsController()
+    {
+        $_SERVER['REQUEST_URI'] = '/show/123/abc';
+        $router = new Router(Request::createFromGlobals());
+
+        // ---------------------------------------------
+        // Assert
+        // ---------------------------------------------
+
+        $router->setHandleParamsController(function ($params, $request) {
+
+            $this->assertIsArray($params);
+            $this->assertEquals(['123', 'abc'], $params);
+            $this->assertInstanceOf(Request::class,  $request);
+
+            $params[0] = \intval($params[0]);
+            $params[1] = \strtoupper($params[1]);
+
+            return $params;
+        });
+        $router->route('GET', '/show/{_INT_}/{_LETTERS_}', function ($val1, $val2) {
+            $this->assertEquals(123, $val1);
+            $this->assertEquals('ABC', $val2);
+        });
+        $router->run();
+    }
+
+    function testMethod_setHandleParamsMiddleware()
+    {
+        $_SERVER['REQUEST_URI'] = '/show/123/abc';
+        $router = new Router(Request::createFromGlobals());
+
+        // ---------------------------------------------
+        // Assert
+        // ---------------------------------------------
+
+        $router->setHandleParamsMiddleware(function ($params, $request) {
+
+            $this->assertIsArray($params);
+            $this->assertEquals(['123', 'abc'], $params);
+            $this->assertInstanceOf(Request::class,  $request);
+
+            $params[0] = \intval($params[0]);
+            $params[1] = \strtoupper($params[1]);
+
+            return $params;
+        });
+
+        $router->middleware('GET', '/show/{_INT_}/{_LETTERS_}', function ($val1, $val2) {
+            $this->assertEquals(123, $val1);
+            $this->assertEquals('ABC', $val2);
+        });
+
+        $router->route('GET', '/show/{_INT_}/{_LETTERS_}', function ($val1, $val2) {
+            $this->assertEquals('123', $val1);
+            $this->assertEquals('abc', $val2);
+        });
+        $router->run();
+    }
+
+    function testMethod_prepareMethod()
+    {
+        $router = new Router(Request::createFromGlobals());
+        $method = new \ReflectionMethod(
+            Router::class,
+            'prepareMethod'
+        );
+        $method->setAccessible(true);
+
+        // ---------------------------------------------
+        // Assert
+        // ---------------------------------------------
+
+        $this->assertEquals($method->invoke($router, 'ALL'), 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD');
+        $this->assertEquals($method->invoke($router, 'GET'), 'GET');
+        $this->assertEquals($method->invoke($router, 'HEAD'), 'HEAD');
+        $this->assertEquals($method->invoke($router, 'DELETE'), 'DELETE');
+    }
+
+    function testMethod_getClassHandle()
+    {
+        $_SERVER['REQUEST_URI'] = '/show/and/';
+        $router = new Router(Request::createFromGlobals());
+
+        // ---------------------------------------------
+        // Assert
+        // ---------------------------------------------
+
+        $router->route(
+            'GET',
+            '/show/and/',
+            RouterTestController::class . '@empty'
+        );
+        $router->run();
+        $this->assertEquals($router->getClassHandle(), RouterTestController::class);
+
+        // ---------------------------------------------
+        // Assert
+        // ---------------------------------------------
+
+        $router->route(
+            'GET',
+            '/show/and/',
+            static function () {}
+        );
+        $router->run();
+        $this->assertEquals($router->getClassHandle(), \Closure::class);
+    }
+
+    function testMethod_getNumHundledMiddleware()
+    {
+        $_SERVER['REQUEST_URI'] = '/show/and/';
+        $router = new Router(Request::createFromGlobals());
+
+        // ---------------------------------------------
+        // Assert
+        // ---------------------------------------------
+
+        // $this->overrideRequest($router);
+        $router->route(
+            'GET',
+            '/show/and/',
+            static function () {}, // c
+            static function () {}, // m
+            static function () {}, // m
+            static function () {}, // m
+        );
+        $router->run();
+
+        $this->assertEquals($router->getNumHundledMiddleware(), 3);
+    }
+
+    function testHttpMethodOverrideHead()
+    {
+        // Fake the request method to being POST and override it
+        $_SERVER['REQUEST_METHOD'] = 'HEAD';
+
+        $router = new Router(Request::createFromGlobals());
+
+        // ---------------------------------------------
+        // Assert
+        // ---------------------------------------------
+
+        $this->assertEquals($router->getRequestMethod(), 'HEAD');
+
+        // ---------------------------------------------
+        // Assert
+        // ---------------------------------------------
+
+        $method = new \ReflectionMethod(
+            Router::class,
+            'getRequestMethodWithOverride'
+        );
+
+        $method->setAccessible(true);
+
+        $this->assertEquals($method->invoke($router), 'GET');
+    }
+
     function testMarkPatternLetters()
     {
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
 
         ob_start();
 
@@ -107,7 +302,7 @@ class RouterTest extends TestCase
 
     function testMarkPatternNumbers()
     {
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
 
         ob_start();
 
@@ -173,7 +368,7 @@ class RouterTest extends TestCase
 
     function testMarkPatternNumbersUnsigned()
     {
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
 
         ob_start();
 
@@ -239,7 +434,7 @@ class RouterTest extends TestCase
 
     function testMarkPatternInt()
     {
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
 
         ob_start();
 
@@ -305,7 +500,7 @@ class RouterTest extends TestCase
 
     function testMarkPatternIntUnsigned()
     {
-        $router = new \Inilim\Router\Router(Request::createFromGlobals());
+        $router = new Router(Request::createFromGlobals());
 
         ob_start();
 
