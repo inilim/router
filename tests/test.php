@@ -10,7 +10,8 @@ Dump::init();
 
 
 $_SERVER['REQUEST_METHOD'] = 'GET';
-$_SERVER['REQUEST_URI'] = '/show/qwerty_uiopasdfghjklzxcvbnm';
+$_SERVER['REQUEST_URI']    = '/show/привет';
+
 $router = new \Inilim\Router\Router(Request::createFromGlobals());
 
 $router->route('GET', '/show/{letters}', static function ($string) {
