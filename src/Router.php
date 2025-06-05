@@ -15,43 +15,31 @@ final class Router
 {
     protected const METHODS = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
 
-    /**
-     * @var Request
-     */
-    protected $request;
+    protected Request $request;
 
     /**
      * @var array<array{p:string,h:string|\Closure}>
      */
-    protected $routes = [];
+    protected array $routes = [];
     /**
      * @var array<array{p:string,h:string|\Closure}>
      */
-    protected $middleware = [];
+    protected array $middleware = [];
     /**
      * @var array<string,array<string|null>>
      */
-    protected $cache = [];
-    /**
-     * @var \Closure|null
-     */
-    protected $notFoundCallback = null;
+    protected array $cache = [];
+    protected ?\Closure $notFoundCallback = null;
     /**
      * @var int|null
      */
-    protected $numHundledMiddleware = null;
-    /**
-     * @var \Closure|null
-     */
-    protected $handleParamsMiddleware = null;
-    /**
-     * @var \Closure|null
-     */
-    protected $handleParamsController = null;
+    protected ?int $numHundledMiddleware = null;
+    protected ?\Closure $handleParamsMiddleware = null;
+    protected ?\Closure $handleParamsController = null;
     /**
      * @var class-string|null
      */
-    protected $classHandle = null;
+    protected ?string $classHandle = null;
 
     // ---------------------------------------------
     // 
@@ -62,26 +50,17 @@ final class Router
         $this->request = $request;
     }
 
-    /**
-     * @return string
-     */
-    function getRequestMethod()
+    function getRequestMethod(): string
     {
         return $this->request->getMethod();
     }
 
-    /**
-     * @return string
-     */
-    function getCurrentUri()
+    function getCurrentUri(): string
     {
         return $this->request->getPath();
     }
 
-    /**
-     * @return void
-     */
-    function run(?\Closure $callback = null)
+    function run(?\Closure $callback = null): void
     {
         // If it's a HEAD request override it to being GET and prevent any output, as per HTTP Specification
         // @url http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.4
@@ -122,7 +101,9 @@ final class Router
     function middleware(string $methods, string $pattern, $handle)
     {
         $r = $this->prepareRoute($methods, $pattern, $handle);
-        if ($r === null) return $this;
+        if ($r === null) {
+            return $this;
+        }
 
         $this->middleware[] = $r;
         return $this;
@@ -161,10 +142,7 @@ final class Router
         return $this->route(self::METHODS, $pattern, $handle, ...$middlewares);
     }
 
-    /**
-     * @return int
-     */
-    function getNumHundledMiddleware()
+    function getNumHundledMiddleware(): int
     {
         return $this->numHundledMiddleware ?? 0;
     }
@@ -172,7 +150,7 @@ final class Router
     /**
      * @return class-string|null
      */
-    function getClassHandle()
+    function getClassHandle(): ?string
     {
         return $this->classHandle;
     }
@@ -209,10 +187,7 @@ final class Router
         return $this;
     }
 
-    /**
-     * @return void
-     */
-    function trigger404()
+    function trigger404(): void
     {
         if ($this->notFoundCallback) {
             $this->notFoundCallback->__invoke();
@@ -229,7 +204,7 @@ final class Router
      * @param string|\Closure $handle
      * @return array{p:string,h:string|\Closure}|null
      */
-    protected function prepareRoute($methods, $pattern, $handle)
+    protected function prepareRoute(string $methods, string $pattern, $handle): ?array
     {
         $m = $this->getRequestMethodWithOverride();
         if (
@@ -247,13 +222,10 @@ final class Router
     }
 
     /**
-     * @param string $pattern
-     * @param string $uri
      * @param mixed[] $matches
-     * @param int $flags
      * @return bool -> is match yes/no
      */
-    protected function patternMatches($pattern, $uri, &$matches, $flags)
+    protected function patternMatches(string $pattern, string $uri, array &$matches, int $flags): bool
     {
         $pattern = \str_replace(
             ['{_NUMBERS_UNSIGNED_}', '{_NUMBERS_}', '{_LETTERS_}', '{_INT_}',               '{_INT_UNSIGNED_}'],
@@ -267,9 +239,8 @@ final class Router
 
     /**
      * @param array<array{p:string,h:string|\Closure}> $controllerOrMiddlewares
-     * @return int
      */
-    protected function handle(array &$controllerOrMiddlewares, bool $isController = false)
+    protected function handle(array &$controllerOrMiddlewares, bool $isController = false): int
     {
         $numHandled = 0;
 
@@ -334,9 +305,8 @@ final class Router
     /**
      * @param array<string|null> $params
      * @param string|\Closure $handle
-     * @return void
      */
-    protected function exec($handle, array $params = [])
+    protected function exec($handle, array $params = []): void
     {
         if ($this->numHundledMiddleware === null) {
             $handleParams = $this->handleParamsMiddleware;
@@ -388,18 +358,12 @@ final class Router
         }
     }
 
-    /**
-     * @return bool
-     */
-    protected function isOverrideHead()
+    protected function isOverrideHead(): bool
     {
         return $this->request->getMethod() === 'HEAD';
     }
 
-    /**
-     * @return string
-     */
-    protected function prepareMethod(string $method)
+    protected function prepareMethod(string $method): string
     {
         $m = \strtoupper($method);
         // @phpstan-ignore-next-line
@@ -409,10 +373,7 @@ final class Router
         return $m;
     }
 
-    /**
-     * @return string
-     */
-    protected function getRequestMethodWithOverride()
+    protected function getRequestMethodWithOverride(): string
     {
         $m = $this->request->getMethod();
         if ($m === 'HEAD') {
