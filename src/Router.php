@@ -225,7 +225,7 @@ final class Router
      * @param mixed[] $matches
      * @return bool -> is match yes/no
      */
-    protected function patternMatches(string $pattern, string $uri, array &$matches, int $flags): bool
+    protected function patternMatches(string $pattern, string $uri, &$matches, int $flags): bool
     {
         $pattern = \str_replace(
             ['{_NUMBERS_UNSIGNED_}', '{_NUMBERS_}', '{_LETTERS_}', '{_INT_}',               '{_INT_UNSIGNED_}'],
