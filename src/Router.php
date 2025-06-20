@@ -228,6 +228,10 @@ final class Router
         ];
     }
 
+    /**
+     * @param mixed $handle
+     * @phpstan-assert-if-true string|\Closure $handle
+     */
     protected function checkHandle($handle): bool
     {
         return \is_string($handle) || $handle instanceof \Closure;
