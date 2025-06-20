@@ -124,8 +124,11 @@ final class Router
         $this->routes[] = $r;
 
         if ($middlewares) {
-            foreach ($middlewares as &$m) {
-                $r['h'] = $m;
+            foreach ($middlewares as &$mh) {
+                if (!$this->checkHandle($mh)) {
+                    throw new \InvalidArgumentException(\sprintf('Invalid ...$middlewares give "%s"', \gettype($mh)));
+                }
+                $r['h'] = $mh;
                 $this->middleware[] = $r;
             }
         }
@@ -206,7 +209,7 @@ final class Router
      */
     protected function prepareRoute(string $methods, string $pattern, $handle): ?array
     {
-        if (!(\is_string($handle) || $handle instanceof \Closure)) {
+        if (!$this->checkHandle($handle)) {
             throw new \InvalidArgumentException(\sprintf('Invalid $handle give "%s"', \gettype($handle)));
         }
 
@@ -223,6 +226,11 @@ final class Router
             'p' => '/' . \trim($pattern, '/'),
             'h' => $handle,
         ];
+    }
+
+    protected function checkHandle($handle): bool
+    {
+        return \is_string($handle) || $handle instanceof \Closure;
     }
 
     /**
