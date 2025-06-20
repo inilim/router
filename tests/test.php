@@ -2,13 +2,25 @@
 
 require_once \dirname(__DIR__) . '/vendor/autoload.php';
 
+use Inilim\Tool\VD;
 use Inilim\Dump\Dump;
-use Inilim\Request\Request;
 use Inilim\Router\Router;
+use Inilim\Request\Request;
 
 Dump::init();
 
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_SERVER['REQUEST_URI'] = '/';
 
+$router = new Router(Request::createFromGlobals());
+
+$router->route('GET', '/', static function () {});
+
+
+$router->run();
+
+
+VD::de(1323);
 $_SERVER['REQUEST_METHOD'] = 'GET';
 $_SERVER['REQUEST_URI'] = '/show/{_INT_}/{_LETTERS_}';
 $router = new Router(Request::createFromGlobals());

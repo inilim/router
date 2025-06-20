@@ -206,6 +206,10 @@ final class Router
      */
     protected function prepareRoute(string $methods, string $pattern, $handle): ?array
     {
+        if (!(\is_string($handle) || $handle instanceof \Closure)) {
+            throw new \InvalidArgumentException(\sprintf('Invalid $handle give "%s"', \gettype($handle)));
+        }
+
         $m = $this->getRequestMethodWithOverride();
         if (
             $m === '' ||
