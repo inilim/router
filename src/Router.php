@@ -332,6 +332,10 @@ final class Router
 
         if ($handleParams) {
             $params = $handleParams($params, $this->request);
+            if (!\is_array($params)) {
+                throw new \InvalidArgumentException(\sprintf('Closure handleParams(Middleware|Controller) must return array, give "%s"', \gettype($params)));
+            }
+            /** @var mixed[] $params */
         }
 
         // ---------------------------------------------
