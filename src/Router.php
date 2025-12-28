@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Inilim\Router;
 
-use Inilim\Tool\Str;
+use Inilim\Tool\PF;
 use Inilim\Request\Request;
 
 /**
@@ -50,11 +50,19 @@ final class Router
         $this->request = $request;
     }
 
+    function getRequest(): Request
+    {
+        return $this->request;
+    }
+
     function getRequestMethod(): string
     {
         return $this->request->getMethod();
     }
 
+    /**
+     * @deprecated return only path. Use getRequest()->getUri()
+     */
     function getCurrentUri(): string
     {
         return $this->request->getPath();
@@ -217,7 +225,7 @@ final class Router
         if (
             $m === '' ||
             // @phpstan-ignore-next-line
-            !Str::_contains($this->prepareMethod($methods), $m)
+            !PF::str_contains($this->prepareMethod($methods), $m)
         ) {
             return null;
         }
@@ -347,7 +355,7 @@ final class Router
             $handle(...$params);
             return;
             // @phpstan-ignore-next-line
-        } elseif (Str::_contains($handle, '@')) {
+        } elseif (PF::str_contains($handle, '@')) {
             /**
              * @var class-string $handle
              */
@@ -387,7 +395,7 @@ final class Router
     {
         $m = \strtoupper($method);
         // @phpstan-ignore-next-line
-        if (Str::_contains($m, 'ALL')) {
+        if (PF::str_contains($m, 'ALL')) {
             return self::METHODS;
         }
         return $m;
